@@ -1,0 +1,389 @@
+-******************************************************************************-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-*
+-* Change History:
+-*
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL UT
+USING (
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ 
+      SVC_CAS_ISA_FILE_ID
+     ,SVC_CAS_GS_GRP_SEQ_NO
+     ,SVC_CAS_ST_SEQ_NO
+     ,SVC_CAS_LX_SEQ_NO
+     ,SVC_CAS_CLP_CLM_SEQ_NO
+     ,SVC_CAS_SVC_SEQ_NO
+     ,SVC_CAS_SEQ_NO
+     ,SVC_CAS_EPP_GEN_SEQ
+FROM
+(
+SELECT
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+     ,SVC_LX_SEQ_NO
+     ,SVC_CLP_CLM_SEQ_NO
+     ,SVC_SEQ_NO
+     ,0-(OUTSTANDING_AMT-SVC_LI_PRVDR_PYMT-TOT_SVC_CAS_AMTS) AS NEW_BALANCE
+FROM
+(
+SELECT
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+     ,SVC_LX_SEQ_NO
+     ,SVC_CLP_CLM_SEQ_NO
+     ,SVC_SEQ_NO
+     ,SVC_CLARITY_TX_ID
+     ,B.PATIENT_ID
+     ,CLP_CLM_SUBMTR_ID
+     ,CLP_CLM_STATUS_CD
+     ,TO_CHAR(B.SERVICE_DATE, 'MM/DD/YYYY') AS SERVICE_DATE
+     ,SVC_PROC1_CD
+     ,OUTSTANDING_AMT
+     ,TO_NUMBER(COALESCE(RTRIM(SVC_LI_PRVDR_PYMT),'0'))
+                                            AS SVC_LI_PRVDR_PYMT
+     ,B.AMOUNT
+     ,SUM(CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '45'
+                AND SVC_CAS_CLM_ADJ_GRP_CD1         = 'CO'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '59'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE','MEDICAL')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '223'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '227'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '253'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = 'A2'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = 'B10'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '1'
+                AND B.PAYOR_ID                      = 1003
+                AND C.ACCOUNT_STATUS_C              = 147
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1)  = '1'
+                AND B.BILLING_PROV_ID               = '14961'
+                AND B.PAYOR_ID                      = 1133
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+               ELSE 0  END
+         +CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '45'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '59'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE','MEDICAL')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '223'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '227'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '253'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = 'A2'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = 'B10'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '1'
+                AND B.PAYOR_ID                      = 1003
+                AND C.ACCOUNT_STATUS_C              = 147
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2)  = '1'
+                AND B.BILLING_PROV_ID               = '14961'
+                AND B.PAYOR_ID                      = 1133
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2),'0'))
+               ELSE 0 END
+         +CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '45'
+-*                AND TO_NUMBER(COALESCE(RTRIM(SVC_LI_PRVDR_PYMT),'0')) = 0
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '59'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE','MEDICAL')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '223'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '227'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '253'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = 'A2'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = 'B10'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '1'
+                AND B.PAYOR_ID                      = 1003
+                AND C.ACCOUNT_STATUS_C              = 147
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3)  = '1'
+                AND B.BILLING_PROV_ID               = '14961'
+                AND B.PAYOR_ID                      = 1133
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3),'0'))
+               ELSE 0 END
+         +CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '45'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '59'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE','MEDICAL')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '223'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '227'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '253'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = 'A2'
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = 'B10'
+                AND RTRIM(IFCT_FILE_PAYER)          IN('MEDICARE')
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '1'
+                AND B.PAYOR_ID                      = 1003
+                AND C.ACCOUNT_STATUS_C              = 147
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD4)  = '1'
+                AND B.BILLING_PROV_ID               = '14961'
+                AND B.PAYOR_ID                      = 1133
+                    THEN TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT4),'0'))
+               ELSE 0 END )  AS TOT_SVC_CAS_AMTS
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID             = ST_ISA_FILE_ID
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL C1
+ON    CLP_ISA_FILE_ID          = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO        = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO            = ST_SEQ_NO
+  AND RTRIM(CLP_CLM_STATUS_CD) = '2'
+  AND CLP_EXCL_RSN_CD          = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL SVC1
+ON    SVC_ISA_FILE_ID        = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO          = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO          = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+  AND SVC_EXCL_RSN_CD        = '   '
+  AND RTRIM(SVC_CLARITY_TX_ID)                          <> '0'
+  AND TO_NUMBER(COALESCE(RTRIM(SVC_LI_PRVDR_PYMT),'0')) >= 0
+INNER JOIN
+      &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL SC1
+ON    SVC_CAS_ISA_FILE_ID    = SVC_ISA_FILE_ID
+  AND SVC_CAS_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+  AND SVC_CAS_ST_SEQ_NO      = SVC_ST_SEQ_NO
+  AND SVC_CAS_LX_SEQ_NO      = SVC_LX_SEQ_NO
+  AND SVC_CAS_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+  AND SVC_CAS_SVC_SEQ_NO     = SVC_SEQ_NO
+  AND SVC_CAS_EXCL_RSN_CD    = '   '
+INNER JOIN
+      ARPB_TRANSACTIONS  B
+ON    TX_ID                  = SVC_CLARITY_TX_ID
+  AND OUTSTANDING_AMT       >= 0
+  AND VOID_DATE              IS NULL
+LEFT
+OUTER JOIN
+      ACCOUNT_STATUS C
+ON    C.ACCOUNT_ID           = B.ACCOUNT_ID
+  AND C.ACCOUNT_STATUS_C     = 147
+WHERE ST_EXCL_RSN_CD         = '   '
+  AND OUTSTANDING_AMT-TO_NUMBER(COALESCE(RTRIM(SVC_LI_PRVDR_PYMT),'0')) >= 0
+  AND NOT EXISTS
+    ( SELECT 1
+      FROM   &CLP.EVAL&CLP_TBL.EVAL C2
+      WHERE  C2.CLP_CLM_SUBMTR_ID = C1.CLP_CLM_SUBMTR_ID
+        AND  C2.CLP_CLM_SEQ_NO   <> C1.CLP_CLM_SEQ_NO )
+GROUP BY
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+     ,SVC_LX_SEQ_NO
+     ,SVC_CLP_CLM_SEQ_NO
+     ,SVC_SEQ_NO
+     ,SVC_CLARITY_TX_ID
+     ,B.PATIENT_ID
+     ,CLP_CLM_SUBMTR_ID
+     ,CLP_CLM_STATUS_CD
+     ,B.SERVICE_DATE
+     ,SVC_PROC1_CD
+     ,B.AMOUNT
+     ,OUTSTANDING_AMT
+     ,TO_NUMBER(COALESCE(RTRIM(SVC_LI_PRVDR_PYMT),'0'))
+) T1
+LEFT OUTER JOIN
+      CLARITY_TDL_TRAN X
+ON    X.TX_ID             = SVC_CLARITY_TX_ID
+  AND X.DETAIL_TYPE       = '20'
+  AND X.PATIENT_AMOUNT   <> 0
+WHERE OUTSTANDING_AMT-SVC_LI_PRVDR_PYMT-TOT_SVC_CAS_AMTS<0
+  AND X.PATIENT_AMOUNT    IS NULL
+  AND TOT_SVC_CAS_AMTS    = 0-(OUTSTANDING_AMT-SVC_LI_PRVDR_PYMT-TOT_SVC_CAS_AMTS)
+  AND SVC_LI_PRVDR_PYMT  <> 0
+ORDER BY 1,2,3,4,5,6
+)
+INNER JOIN
+      &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+ON    SVC_CAS_ISA_FILE_ID    = SVC_ISA_FILE_ID
+  AND SVC_CAS_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+  AND SVC_CAS_ST_SEQ_NO      = SVC_ST_SEQ_NO
+  AND SVC_CAS_LX_SEQ_NO      = SVC_LX_SEQ_NO
+  AND SVC_CAS_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+  AND SVC_CAS_SVC_SEQ_NO     = SVC_SEQ_NO
+  AND SVC_CAS_EXCL_RSN_CD    = '   '
+  AND ((     RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1) = '253'
+         AND TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1), '0')) = NEW_BALANCE)
+    OR (     RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2) = '253'
+         AND TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT2), '0')) = NEW_BALANCE)
+    OR (     RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3) = '253'
+         AND TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT3), '0')) = NEW_BALANCE))
+) ST
+ON  (    ST.SVC_CAS_ISA_FILE_ID    = UT.SVC_CAS_ISA_FILE_ID
+     AND ST.SVC_CAS_GS_GRP_SEQ_NO  = UT.SVC_CAS_GS_GRP_SEQ_NO
+     AND ST.SVC_CAS_ST_SEQ_NO      = UT.SVC_CAS_ST_SEQ_NO
+     AND ST.SVC_CAS_LX_SEQ_NO      = UT.SVC_CAS_LX_SEQ_NO
+     AND ST.SVC_CAS_CLP_CLM_SEQ_NO = UT.SVC_CAS_CLP_CLM_SEQ_NO
+     AND ST.SVC_CAS_SVC_SEQ_NO     = UT.SVC_CAS_SVC_SEQ_NO
+     AND ST.SVC_CAS_SEQ_NO         = UT.SVC_CAS_SEQ_NO
+     AND ST.SVC_CAS_EPP_GEN_SEQ    = UT.SVC_CAS_EPP_GEN_SEQ  )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.SVC_CAS_EXCL_RSN_CD       = 'XC1'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+SELECT
+      SVC_CAS_ISA_FILE_ID
+     ,SVC_CAS_GS_GRP_SEQ_NO
+     ,SVC_CAS_ST_SEQ_NO
+     ,SVC_CAS_LX_SEQ_NO
+     ,SVC_CAS_CLP_CLM_SEQ_NO
+     ,SVC_CAS_SVC_SEQ_NO
+     ,SVC_CAS_SEQ_NO
+     ,SVC_CAS_EPP_GEN_SEQ+1    AS SVC_CAS_EPP_GEN_SEQ
+     ,SVC_CAS_CLM_ADJ_GRP_CD1
+     ,CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1) = '253'
+                THEN '23'
+           ELSE SVC_CAS_CLM_ADJ_RSN_CD1
+      END                      AS SVC_CAS_CLM_ADJ_RSN_CD1
+     ,SVC_CAS_CLM_ADJ_AMT1
+     ,SVC_CAS_CLM_ADJ_QTY1
+     ,CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD2) = '253'
+                THEN '23'
+           ELSE SVC_CAS_CLM_ADJ_RSN_CD2
+      END                      AS SVC_CAS_CLM_ADJ_RSN_CD2
+     ,SVC_CAS_CLM_ADJ_AMT2
+     ,SVC_CAS_CLM_ADJ_QTY2
+     ,CASE WHEN RTRIM(SVC_CAS_CLM_ADJ_RSN_CD3) = '253'
+                THEN '23'
+           ELSE SVC_CAS_CLM_ADJ_RSN_CD3
+      END                      AS SVC_CAS_CLM_ADJ_RSN_CD3
+     ,SVC_CAS_CLM_ADJ_AMT3
+     ,SVC_CAS_CLM_ADJ_QTY3
+     ,SVC_CAS_CLM_ADJ_RSN_CD4
+     ,SVC_CAS_CLM_ADJ_AMT4
+     ,SVC_CAS_CLM_ADJ_QTY4
+     ,SVC_CAS_CLM_ADJ_RSN_CD5
+     ,SVC_CAS_CLM_ADJ_AMT5
+     ,SVC_CAS_CLM_ADJ_QTY5
+     ,SVC_CAS_CLM_ADJ_RSN_CD6
+     ,SVC_CAS_CLM_ADJ_AMT6
+     ,SVC_CAS_CLM_ADJ_QTY6
+     ,'XC1'                    AS SVC_CAS_INCL_RSN_CD
+     ,'   '                    AS SVC_CAS_EXCL_RSN_CD
+     ,SVC_CAS_PATIENT_PYMT
+FROM  &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+WHERE SVC_CAS_EXCL_RSN_CD = 'XC1'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

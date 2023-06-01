@@ -1,0 +1,493 @@
+-TYPE *************************************************************************
+-TYPE *                      &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-******************************************************************************
+-* Program: epp_claim_level_pmt_cl1
+-* Author:  Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-TYPE *************************************************************************
+-TYPE Only BOAMIXED Files
+-TYPE *************************************************************************
+-*-IF  '&PAYER.EVAL' EQ 'BOAMIXED' THEN GOTO THE_END;
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SVC.EVAL&SVC_TBL.EVAL UT
+USING (
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */
+      S2.SVC_ISA_FILE_ID
+     ,S2.SVC_GS_GRP_SEQ_NO
+     ,S2.SVC_ST_SEQ_NO
+     ,S2.SVC_LX_SEQ_NO
+     ,S2.SVC_CLP_CLM_SEQ_NO
+     ,S2.SVC_SEQ_NO
+     ,S2.SVC_EPP_GEN_SEQ
+     ,CLP_CLM_SUBMTR_ID
+     ,S1.SVC_SEQ_NO        AS SVC_SEQ_NO2
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID            = ST_ISA_FILE_ID
+  AND RTRIM(IFCT_FILE_PAYER)  = 'BOAMIXED'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL C1
+ON    CLP_ISA_FILE_ID         = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO           = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD         = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S1
+ON    S1.SVC_ISA_FILE_ID      = CLP_ISA_FILE_ID
+  AND S1.SVC_GS_GRP_SEQ_NO    = CLP_GS_GRP_SEQ_NO
+  AND S1.SVC_ST_SEQ_NO        = CLP_ST_SEQ_NO
+  AND S1.SVC_LX_SEQ_NO        = CLP_LX_SEQ_NO
+  AND S1.SVC_CLP_CLM_SEQ_NO   = CLP_CLM_SEQ_NO
+  AND S1.SVC_EXCL_RSN_CD      = '   '
+  AND TO_NUMBER(COALESCE(RTRIM(S1.SVC_ORGLI_PRVDR_PYMT),'0'))<> 0
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S2
+ON    S2.SVC_ISA_FILE_ID      = CLP_ISA_FILE_ID
+  AND S2.SVC_GS_GRP_SEQ_NO    = CLP_GS_GRP_SEQ_NO
+  AND S2.SVC_ST_SEQ_NO        = CLP_ST_SEQ_NO
+  AND S2.SVC_LX_SEQ_NO        = CLP_LX_SEQ_NO
+  AND S2.SVC_CLP_CLM_SEQ_NO   = CLP_CLM_SEQ_NO
+  AND RTRIM(S2.SVC_PROC1_CD)  = ';0INT'
+  AND S2.SVC_EXCL_RSN_CD      = '   '
+  AND TO_NUMBER(COALESCE(RTRIM(S2.SVC_ORGLI_PRVDR_PYMT),'0')) < 10
+  AND TO_NUMBER(COALESCE(RTRIM(S2.SVC_ORGLI_PRVDR_PYMT),'0'))
+         = TO_NUMBER(COALESCE(RTRIM(S2.SVC_LI_PRVDR_PYMT),'0'))
+  AND NOT EXISTS
+    ( SELECT 1
+      FROM  &SVC.EVAL&SVC_TBL.EVAL S3
+      WHERE S3.SVC_ISA_FILE_ID      = CLP_ISA_FILE_ID
+        AND S3.SVC_GS_GRP_SEQ_NO    = CLP_GS_GRP_SEQ_NO
+        AND S3.SVC_ST_SEQ_NO        = CLP_ST_SEQ_NO
+        AND S3.SVC_LX_SEQ_NO        = CLP_LX_SEQ_NO
+        AND S3.SVC_CLP_CLM_SEQ_NO   = CLP_CLM_SEQ_NO
+        AND S3.SVC_EXCL_RSN_CD      = '   '
+        AND S3.SVC_SEQ_NO           NOT IN (S1.SVC_SEQ_NO,S2.SVC_SEQ_NO))
+ORDER BY 1,2,3,4,5,6
+) ST
+ON  ( ST.SVC_ISA_FILE_ID      = UT.SVC_ISA_FILE_ID
+  AND ST.SVC_GS_GRP_SEQ_NO    = UT.SVC_GS_GRP_SEQ_NO
+  AND ST.SVC_ST_SEQ_NO        = UT.SVC_ST_SEQ_NO
+  AND ST.SVC_LX_SEQ_NO        = UT.SVC_LX_SEQ_NO
+  AND ST.SVC_CLP_CLM_SEQ_NO   = UT.SVC_CLP_CLM_SEQ_NO
+  AND ST.SVC_SEQ_NO           = UT.SVC_SEQ_NO
+  AND ST.SVC_EPP_GEN_SEQ      = UT.SVC_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.SVC_MULTI_USE_AMOUNT = ST.SVC_SEQ_NO2
+     ,UT.SVC_TX_ID_MATCH_TYPE = 'CMI'
+     ,UT.SVC_EXCL_RSN_CD      = 'CMI'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT 1
+FROM   &SVC.EVAL&SVC_TBL.EVAL
+WHERE  SVC_EXCL_RSN_CD  = 'CMI'
+  AND  ROWNUM           < 2
+;
+TABLEF FILE SQLOUT
+LIST *
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &RECORDS.EVAL   EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SVC.EVAL&SVC_TBL.EVAL UT
+USING (
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */
+      S2.SVC_ISA_FILE_ID
+     ,S2.SVC_GS_GRP_SEQ_NO
+     ,S2.SVC_ST_SEQ_NO
+     ,S2.SVC_LX_SEQ_NO
+     ,S2.SVC_CLP_CLM_SEQ_NO
+     ,S2.SVC_SEQ_NO
+     ,S2.SVC_EPP_GEN_SEQ
+     ,CLP_CLM_SUBMTR_ID
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID            = ST_ISA_FILE_ID
+  AND RTRIM(IFCT_FILE_PAYER)  = 'BOAMIXED'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL C1
+ON    CLP_ISA_FILE_ID         = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO           = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD         = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S1
+ON    S1.SVC_ISA_FILE_ID      = CLP_ISA_FILE_ID
+  AND S1.SVC_GS_GRP_SEQ_NO    = CLP_GS_GRP_SEQ_NO
+  AND S1.SVC_ST_SEQ_NO        = CLP_ST_SEQ_NO
+  AND S1.SVC_LX_SEQ_NO        = CLP_LX_SEQ_NO
+  AND S1.SVC_CLP_CLM_SEQ_NO   = CLP_CLM_SEQ_NO
+  AND RTRIM(S1.SVC_PROC1_CD)  = ';0INT'
+  AND S1.SVC_EXCL_RSN_CD      = 'CMI'
+  AND TO_NUMBER(COALESCE(RTRIM(S1.SVC_ORGLI_PRVDR_PYMT),'0')) < 10
+  AND TO_NUMBER(COALESCE(RTRIM(S1.SVC_ORGLI_PRVDR_PYMT),'0'))
+         = TO_NUMBER(COALESCE(RTRIM(S1.SVC_LI_PRVDR_PYMT),'0'))
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL         S2
+ON    S2.SVC_ISA_FILE_ID      = CLP_ISA_FILE_ID
+  AND S2.SVC_GS_GRP_SEQ_NO    = CLP_GS_GRP_SEQ_NO
+  AND S2.SVC_ST_SEQ_NO        = CLP_ST_SEQ_NO
+  AND S2.SVC_LX_SEQ_NO        = CLP_LX_SEQ_NO
+  AND S2.SVC_CLP_CLM_SEQ_NO   = CLP_CLM_SEQ_NO
+  AND S2.SVC_SEQ_NO           = S1.SVC_MULTI_USE_AMOUNT
+  AND S2.SVC_EXCL_RSN_CD      = '   '
+  AND TO_NUMBER(COALESCE(RTRIM(S2.SVC_ORGLI_PRVDR_PYMT),'0')) <> 0
+ORDER BY 1,2,3,4,5,6
+) ST
+ON  ( ST.SVC_ISA_FILE_ID      = UT.SVC_ISA_FILE_ID
+  AND ST.SVC_GS_GRP_SEQ_NO    = UT.SVC_GS_GRP_SEQ_NO
+  AND ST.SVC_ST_SEQ_NO        = UT.SVC_ST_SEQ_NO
+  AND ST.SVC_LX_SEQ_NO        = UT.SVC_LX_SEQ_NO
+  AND ST.SVC_CLP_CLM_SEQ_NO   = UT.SVC_CLP_CLM_SEQ_NO
+  AND ST.SVC_SEQ_NO           = UT.SVC_SEQ_NO
+  AND ST.SVC_EPP_GEN_SEQ      = UT.SVC_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.SVC_TX_ID_MATCH_TYPE = 'CMI'
+     ,UT.SVC_EXCL_RSN_CD      = 'CMI'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &SVC.EVAL&SVC_TBL.EVAL
+SELECT
+      S1.SVC_ISA_FILE_ID
+     ,S1.SVC_GS_GRP_SEQ_NO
+     ,S1.SVC_ST_SEQ_NO
+     ,S1.SVC_LX_SEQ_NO
+     ,S1.SVC_CLP_CLM_SEQ_NO
+     ,S1.SVC_SEQ_NO
+     ,S1.SVC_EPP_GEN_SEQ+1
+     ,S1.SVC_COMP_SEPERATOR
+     ,S1.SVC_PROC1_SVC_ID_QLFR
+     ,S1.SVC_PROC1_CD
+     ,S1.SVC_PROC1_MODF1
+     ,S1.SVC_PROC1_MODF2
+     ,S1.SVC_PROC1_MODF3
+     ,S1.SVC_PROC1_MODF4
+     ,S1.SVC_ORGLI_PRVDR_PYMT
+     ,TO_NUMBER(COALESCE(RTRIM(S1.SVC_LI_PRVDR_PYMT),'0'))
+     +TO_NUMBER(COALESCE(RTRIM(S2.SVC_LI_PRVDR_PYMT),'0'))
+     ,S1.SVC_NTL_BILNG_REV_CD
+     ,S1.SVC_UNTS_SVC_PD_CNT
+     ,S1.SVC_PROC2_SVC_ID_QLFR
+     ,S1.SVC_PROC2_CD
+     ,S1.SVC_PROC2_MODF1
+     ,S1.SVC_PROC2_MODF2
+     ,S1.SVC_PROC2_MODF3
+     ,S1.SVC_PROC2_MODF4
+     ,S1.SVC_PROC2_CD_DESC
+     ,S1.SVC_ORG_UNTS_SVC_CNT
+     ,S1.SVC_CLARITY_TX_ID
+     ,'CMI'                    AS SVC_TX_ID_MATCH_TYPE
+     ,S1.SVC_CONTR_PAYOR_IND
+     ,S1.SVC_DUP_PMT_IND
+     ,S1.SVC_RVSD_INVC_NO
+     ,S1.SVC_CURRENT_BALANCE
+     ,S1.SVC_INS_AMOUNT_PAID
+     ,S1.SVC_INS_AMOUNT_ADJ
+     ,S1.SVC_CRG_IS_VOID_YN
+     ,S1.SVC_PRIOR_DENIAL_YN
+     ,TO_NUMBER(COALESCE(RTRIM(S2.SVC_LI_PRVDR_PYMT),'0'))
+                               AS SVC_MULTI_USE_AMOUNT
+     ,S1.SVC_SCENARIO
+     ,'CMI'                    AS SVC_INCL_RSN_CD
+     ,'   '                    AS SVC_EXCL_RSN_CD
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL C1
+ON    CLP_ISA_FILE_ID           = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO         = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO             = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD           = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S1
+ON    S1.SVC_ISA_FILE_ID        = CLP_ISA_FILE_ID
+  AND S1.SVC_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+  AND S1.SVC_ST_SEQ_NO          = CLP_ST_SEQ_NO
+  AND S1.SVC_LX_SEQ_NO          = CLP_LX_SEQ_NO
+  AND S1.SVC_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+  AND TO_NUMBER(COALESCE(RTRIM(S1.SVC_ORGLI_PRVDR_PYMT),'0')) <> 0
+  AND S1.SVC_EXCL_RSN_CD        = 'CMI'
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S2
+ON    S2.SVC_ISA_FILE_ID        = CLP_ISA_FILE_ID
+  AND S2.SVC_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+  AND S2.SVC_ST_SEQ_NO          = CLP_ST_SEQ_NO
+  AND S2.SVC_LX_SEQ_NO          = CLP_LX_SEQ_NO
+  AND S2.SVC_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+  AND S2.SVC_MULTI_USE_AMOUNT   = S1.SVC_SEQ_NO
+  AND S2.SVC_EXCL_RSN_CD        = 'CMI'
+  AND TO_NUMBER(COALESCE(RTRIM(S2.SVC_ORGLI_PRVDR_PYMT),'0')) < 10
+  AND TO_NUMBER(COALESCE(RTRIM(S2.SVC_ORGLI_PRVDR_PYMT),'0'))
+         = TO_NUMBER(COALESCE(RTRIM(S2.SVC_LI_PRVDR_PYMT),'0'))
+ORDER BY 1,2,3,4,5,6,7
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP005
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP005';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL UT
+USING (
+SELECT
+      SVC_CAS_ISA_FILE_ID
+     ,SVC_CAS_GS_GRP_SEQ_NO
+     ,SVC_CAS_ST_SEQ_NO
+     ,SVC_CAS_LX_SEQ_NO
+     ,SVC_CAS_CLP_CLM_SEQ_NO
+     ,SVC_CAS_SVC_SEQ_NO
+     ,SVC_CAS_SEQ_NO
+     ,SVC_CAS_EPP_GEN_SEQ
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID           = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO         = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO             = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD           = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID           = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO         = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO             = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO             = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO        = CLP_CLM_SEQ_NO
+  AND SVC_INCL_RSN_CD           = 'CMI'
+INNER JOIN
+      &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL  SC1
+ON    SVC_CAS_ISA_FILE_ID       = SVC_ISA_FILE_ID
+  AND SVC_CAS_GS_GRP_SEQ_NO     = SVC_GS_GRP_SEQ_NO
+  AND SVC_CAS_ST_SEQ_NO         = SVC_ST_SEQ_NO
+  AND SVC_CAS_LX_SEQ_NO         = SVC_LX_SEQ_NO
+  AND SVC_CAS_CLP_CLM_SEQ_NO    = SVC_CLP_CLM_SEQ_NO
+  AND SVC_CAS_SVC_SEQ_NO        = SVC_SEQ_NO
+  AND SVC_CAS_CLM_ADJ_GRP_CD1   = 'CO'
+  AND SVC_CAS_EXCL_RSN_CD       = '   '
+  AND RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1) = '45'
+WHERE ST_EXCL_RSN_CD            = '   '
+ORDER BY 1,2,3,4
+) ST
+ON  ( UT.SVC_CAS_ISA_FILE_ID    = ST.SVC_CAS_ISA_FILE_ID
+  AND UT.SVC_CAS_GS_GRP_SEQ_NO  = ST.SVC_CAS_GS_GRP_SEQ_NO
+  AND UT.SVC_CAS_ST_SEQ_NO      = ST.SVC_CAS_ST_SEQ_NO
+  AND UT.SVC_CAS_LX_SEQ_NO      = ST.SVC_CAS_LX_SEQ_NO
+  AND UT.SVC_CAS_CLP_CLM_SEQ_NO = ST.SVC_CAS_CLP_CLM_SEQ_NO
+  AND UT.SVC_CAS_SVC_SEQ_NO     = ST.SVC_CAS_SVC_SEQ_NO
+  AND UT.SVC_CAS_SEQ_NO         = ST.SVC_CAS_SEQ_NO
+  AND UT.SVC_CAS_EPP_GEN_SEQ    = ST.SVC_CAS_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.SVC_CAS_EXCL_RSN_CD    = 'CMI'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP006
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP006';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+SELECT
+      SVC_ISA_FILE_ID          AS SVC_CAS_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO        AS SVC_CAS_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO            AS SVC_CAS_ST_SEQ_NO
+     ,SVC_LX_SEQ_NO            AS SVC_CAS_LX_SEQ_NO
+     ,SVC_CLP_CLM_SEQ_NO       AS SVC_CAS_CLP_CLM_SEQ_NO
+     ,SVC_SEQ_NO               AS SVC_CAS_SVC_SEQ_NO
+     ,COALESCE(( SELECT MAX(SVC_CAS_SEQ_NO)+1
+                 FROM   &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL CC2
+                 WHERE  CC2.SVC_CAS_ISA_FILE_ID    = SVC_ISA_FILE_ID
+                   AND  CC2.SVC_CAS_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+                   AND  CC2.SVC_CAS_ST_SEQ_NO      = SVC_ST_SEQ_NO
+                   AND  CC2.SVC_CAS_LX_SEQ_NO      = SVC_LX_SEQ_NO
+                   AND  CC2.SVC_CAS_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+                   AND  CC2.SVC_CAS_SVC_SEQ_NO     = SVC_SEQ_NO
+                   AND  CC2.SVC_CAS_EXCL_RSN_CD    = '   ' ), 1)
+                               AS SVC_CAS_SEQ_NO
+     ,1                        AS SVC_CAS_EPP_GEN_SEQ
+     ,SVC_CAS_CLM_ADJ_GRP_CD1
+     ,SVC_CAS_CLM_ADJ_RSN_CD1
+     ,TO_NUMBER(COALESCE(RTRIM(SVC_CAS_CLM_ADJ_AMT1),'0'))
+        - SVC_MULTI_USE_AMOUNT AS SVC_CAS_CLM_ADJ_AMT1
+     ,SVC_CAS_CLM_ADJ_QTY1
+     ,SVC_CAS_CLM_ADJ_RSN_CD2
+     ,SVC_CAS_CLM_ADJ_AMT2
+     ,SVC_CAS_CLM_ADJ_QTY2
+     ,SVC_CAS_CLM_ADJ_RSN_CD3
+     ,SVC_CAS_CLM_ADJ_AMT3
+     ,SVC_CAS_CLM_ADJ_QTY3
+     ,SVC_CAS_CLM_ADJ_RSN_CD4
+     ,SVC_CAS_CLM_ADJ_AMT4
+     ,SVC_CAS_CLM_ADJ_QTY4
+     ,SVC_CAS_CLM_ADJ_RSN_CD5
+     ,SVC_CAS_CLM_ADJ_AMT5
+     ,SVC_CAS_CLM_ADJ_QTY5
+     ,SVC_CAS_CLM_ADJ_RSN_CD6
+     ,SVC_CAS_CLM_ADJ_AMT6
+     ,SVC_CAS_CLM_ADJ_QTY6
+     ,'CMI'                    AS SVC_CAS_INCL_RSN_CD
+     ,'   '                    AS SVC_CAS_EXCL_RSN_CD
+     ,0                        AS SVC_CAS_PATIENT_PYMT
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID         = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO           = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD         = '   '
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID         = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO       = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO           = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO           = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO      = CLP_CLM_SEQ_NO
+  AND SVC_INCL_RSN_CD         = 'CMI'
+  AND SVC_EXCL_RSN_CD         = '   '
+INNER JOIN
+      &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL  SC1
+ON    SVC_CAS_ISA_FILE_ID     = SVC_ISA_FILE_ID
+  AND SVC_CAS_GS_GRP_SEQ_NO   = SVC_GS_GRP_SEQ_NO
+  AND SVC_CAS_ST_SEQ_NO       = SVC_ST_SEQ_NO
+  AND SVC_CAS_LX_SEQ_NO       = SVC_LX_SEQ_NO
+  AND SVC_CAS_CLP_CLM_SEQ_NO  = SVC_CLP_CLM_SEQ_NO
+  AND SVC_CAS_SVC_SEQ_NO      = SVC_SEQ_NO
+  AND SVC_CAS_CLM_ADJ_GRP_CD1 = 'CO'
+  AND SVC_CAS_EXCL_RSN_CD     = 'CMI'
+  AND RTRIM(SVC_CAS_CLM_ADJ_RSN_CD1) = '45'
+WHERE ST_EXCL_RSN_CD          = '   '
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN
