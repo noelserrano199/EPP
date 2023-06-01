@@ -1,0 +1,298 @@
+DFLT_NEIC_CD      1 NEICCD          .00 CMAE1        AETNA                                    20130718 00:00 WLS          X
+DFLT_NEIC_CD      2 NEICCD          .00 BC001        ANTHEMBLUECROSS                          20130718 00:00 WLS          X
+DFLT_NEIC_CD      3 NEICCD          .00 62308        CIGNA                                    20130718 00:00 WLS          X
+DFLT_NEIC_CD      4 NEICCD          .00 95567        HEALTHNET                                20130718 00:00 WLS          X
+DFLT_NEIC_CD      5 NEICCD          .00 CMUN1        UNITEDHEALTHCARE                         20130718 00:00 WLS          X
+DFLT_NEIC_CD      6 NEICCD          .00 BS001        BLUESHIELD                               20130718 00:00 WLS          X
+DFLT_NEIC_CD      7 NEICCD          .00 MR002        MEDICARE                                 20130718 00:00 WLS          X
+DFLT_NEIC_CD      8 NEICCD          .00 MC051        MEDICAL                                  20130718 00:00 WLS          X
+DFLT_NEIC_CD      9 NEICCD          .00 36273        AARPUHC                                  20130718 00:00 WLS          X
+RC16_EXCLS        1 M4              .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        2 M6              .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        3 M9              .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        4 M16             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        5 M17             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        6 M27             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        7 M32             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        8 M70             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS        9 M85             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       10 M92             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       11 M101            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       12 M107            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       13 M109            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       14 M112            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       15 M118            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       16 MA01            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       17 MA02            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       18 MA03            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       19 MA07            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       20 MA08            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       21 MA09            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       22 MA10            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       23 MA11            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       24 MA13            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       25 MA14            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       26 MA15            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       27 MA17            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       28 MA18            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       29 MA19            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       30 MA22            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       31 MA26            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       32 MA28            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       33 MA44            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       34 MA45            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       35 MA59            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       36 MA62            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       37 MA68            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       38 MA72            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       39 MA74            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       40 MA77            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       41 MA117           .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       42 MA118           .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       43 MA125           .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       44 MA127           .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       45 N1              .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       46 N7              .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       47 N10             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       48 N11             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       49 N14             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       50 N17             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       51 N18             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       52 N21             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       53 N45             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       54 N84             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       55 N85             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       56 N88             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       57 N89             .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       58 N100            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       59 N132            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       60 N133            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       61 N134            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       62 N136            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       63 N137            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       64 N138            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       65 N139            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       66 N140            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       67 N154            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       68 N155            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       69 N156            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       70 N162            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       71 N177            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       72 N183            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       73 N185            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       74 N187            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       75 N189            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       76 N196            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       77 N210            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       78 N211            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       79 N212            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       80 N215            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       81 N220            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       82 N352            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       83 N353            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       84 N355            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       85 N358            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       86 N360            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       87 N364            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       88 N367            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       89 N369            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       90 N371            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       91 N377            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       92 N387            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       93 N400            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       94 N419            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       95 N420            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       96 N421            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       97 N422            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       98 N423            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS       99 N437            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      100 N438            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      101 N444            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      102 N447            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      103 N449            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      104 N469            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      105 N492            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      106 N505            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      107 N506            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      108 N508            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      109 N509            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      110 N510            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      111 N511            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      112 N512            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      113 N513            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      114 N515            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      115 N520            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      116 N539            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      117 N544            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      118 N545            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      119 N546            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      120 N548            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      121 N549            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      122 N551            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      123 N552            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      124 N553            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      125 N565            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      126 N566            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      127 N568            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      128 N571            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      129 N573            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      130 N591            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      131 N592            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      132 N599            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      133 N605            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      134 N609            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      135 N610            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      136 N613            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      137 N614            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      138 N615            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      139 N616            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      140 N618            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      141 N620            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      142 N634            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      143 N635            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      144 N638            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      145 N639            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      146 N641            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      147 N644            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      148 N646            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      149 N647            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      150 N648            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      151 N649            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      152 N654            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      153 N656            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      154 N660            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      155 N662            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      156 N663            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      157 N664            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      158 N669            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      159 N671            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      160 N672            .00                                                       20140226 00:00 BDG          X
+RC16_EXCLS      161 N673            .00                                                       20140226 00:00 BDG          X
+UCLA_PAYEES       1 NPI             .00 1497062574   ARIE BELLDEGRUN MD                       20131110 00:00 WLS          X
+UCLA_PAYEES       2 NPI             .00 1699872366   BERT J THOMAS MD                         20131110 00:00 WLS          X
+UCLA_PAYEES       3 NPI             .00 1043427248   UCLA PACKAGE BILLING                     20131110 00:00 WLS          X
+UCLA_PAYEES       4 NPI             .00 1063432607   ROBERT SMITH MD                          20131110 00:00 WLS          X
+UCLA_PAYEES       5 NPI             .00 1073582888   UCLA OB-GYN MEDICAL GROUP                20131110 00:00 WLS          X
+UCLA_PAYEES       6 NPI             .00 1104889138   UCLA EMERGENCY PHYSICAINS                20131110 00:00 WLS          X
+UCLA_PAYEES       7 NPI             .00 1154389799   UCLA UROLOGY ASSOCIATES                  20131110 00:00 WLS          X
+UCLA_PAYEES       8 NPI             .00 1164487518   UCLA PLASTIC SURGERY ASSC                20131110 00:00 WLS          X
+UCLA_PAYEES       9 NPI             .00 1235107566   UCLA DEPT OF MED PROF GRP                20131110 00:00 WLS          X
+UCLA_PAYEES      10 NPI             .00 1255396602   PLASTIC SURG GRP OF UCLA                 20131110 00:00 WLS          X
+UCLA_PAYEES      11 NPI             .00 1255412300   JOHN GORDON FRAZEE MD                    20131110 00:00 WLS          X
+UCLA_PAYEES      12 NPI             .00 1255528055   UCLA PEDIATRICS                          20131110 00:00 WLS          X
+UCLA_PAYEES      13 NPI             .00 1275591802   UCLA FAMILY HEALTH CENTER                20131110 00:00 WLS          X
+UCLA_PAYEES      14 NPI             .00 1326006966   JULES STEIN EYE INSTITUTE                20131110 00:00 WLS          X
+UCLA_PAYEES      15 NPI             .00 1346684842   UC REGENTS UCLA DMPG COMMUNITY           20131110 00:00 WLS          X
+UCLA_PAYEES      16 NPI             .00 1366750978   ERIC E JOHNSON MD INC                    20131110 00:00 WLS          X
+UCLA_PAYEES      17 NPI             .00 1366789307   UCLA DMPG SOUTH BAY                      20131110 00:00 WLS          X
+UCLA_PAYEES      18 NPI             .00 1386961860   HILLEL LAKS M D INC                      20131110 00:00 WLS          X
+UCLA_PAYEES      19 NPI             .00 1437117074   UCLA NEUROLOGICAL GROUP                  20131110 00:00 WLS          X
+UCLA_PAYEES      20 NPI             .00 1447218086   GONDA GOLDSCHMIED VAS CTR                20131110 00:00 WLS          X
+UCLA_PAYEES      21 NPI             .00 1528179793   UCLA ORTHOPAEDIC SURGERY                 20131110 00:00 WLS          X
+UCLA_PAYEES      22 NPI             .00 1538125844   UCLA NEUROSURGERY ASSOCIATES             20131110 00:00 WLS          X
+UCLA_PAYEES      23 NPI             .00 1568431310   UCLA DERMATOLOGY MEDICAL GROUP           20131110 00:00 WLS          X
+UCLA_PAYEES      24 NPI             .00 1578587051   DUNCAN Q MCBRIDE MD                      20131110 00:00 WLS          X
+UCLA_PAYEES      25 NPI             .00 1609194497   UCLA SANTA MONICA NEUROLOGY GRP PRA      20131110 00:00 WLS          X
+UCLA_PAYEES      26 NPI             .00 1609839067   UCLA GYNECOLOGIC ONCOLOGY                20131110 00:00 WLS          X
+UCLA_PAYEES      27 NPI             .00 1619935251   UCLA HEAD/NECK SURG ASSOC                20131110 00:00 WLS          X
+UCLA_PAYEES      28 NPI             .00 1629032982   UCLA THORACIC ONC SURGERY                20131110 00:00 WLS          X
+UCLA_PAYEES      29 NPI             .00 1679918395   UCLA ORTHOPAEDICS PT GROUP               20131110 00:00 WLS          X
+UCLA_PAYEES      30 NPI             .00 1689692303   UCLA ORAL MAX SURGERY                    20131110 00:00 WLS          X
+UCLA_PAYEES      31 NPI             .00 1710287297   UCLA CPN SANTA MONICA BAY PHYSICIANS     20131110 00:00 WLS          X
+UCLA_PAYEES      32 NPI             .00 1730143454   UCLA-RAD ONC GRP PRACTICE                20131110 00:00 WLS          X
+UCLA_PAYEES      33 NPI             .00 1730147372   ASSOCIATED GEN SURGERY                   20131110 00:00 WLS          X
+UCLA_PAYEES      34 NPI             .00 1740582444   TIMOTHY A MILLER MD                      20131110 00:00 WLS          X
+UCLA_PAYEES      35 NPI             .00 1750368999   UCLA PRACTICE PLAN                       20131110 00:00 WLS          X
+UCLA_PAYEES      36 NPI             .00 1750397386   SURGICAL ONC ASC WESTWOOD                20131110 00:00 WLS          X
+UCLA_PAYEES      37 NPI             .00 1750483616   UNIV HEAD & NECK ASSOC                   20131110 00:00 WLS          X
+UCLA_PAYEES      38 NPI             .00 1851357941   UCLA PED SURGERY ASSOC                   20131110 00:00 WLS          X
+UCLA_PAYEES      39 NPI             .00 1851463723   DEPT OF NUCLEAR MEDICINE                 20131110 00:00 WLS          X
+UCLA_PAYEES      40 NPI             .00 1881670248   UCLA RADIOLOGY MED GROUP                 20131110 00:00 WLS          X
+UCLA_PAYEES      41 NPI             .00 1902861297   UCLA SURGICAL ONC ASSOC                  20131110 00:00 WLS          X
+UCLA_PAYEES      42 NPI             .00 1902862170   UCLA LIVER PANCREAS TRANS                20131110 00:00 WLS          X
+UCLA_PAYEES      43 NPI             .00 1912963232   UCLA CARDIOTHORACIC SURG                 20131110 00:00 WLS          X
+UCLA_PAYEES      44 NPI             .00 1942412747   UCLA PERINATAL GROUP                     20131110 00:00 WLS          X
+UCLA_PAYEES      45 NPI             .00 1972527414   ELLIOT ABEMAYOR MD                       20131110 00:00 WLS          X
+UCLA_PAYEES      46 NPI             .00 1982667663   UCLA DEPT OF PEDIATRICS                  20131110 00:00 WLS          X
+UCLA_PAYEES      47 NPI             .00 1801176193   SHERWIN ISENBERG MD                      20131110 00:00 WLS          X
+UCLA_PAYEES      48 NPI             .00 1225057508   JACOB RAJFER MD                          20131110 00:00 WLS          X
+UCLA_PAYEES      49 NPI             .00 1801231071   JOHN G FRAZEE MD                         20131110 00:00 WLS          X
+UCLA_PAYEES      50 NPI             .00 1497732630   UCLA PATHOLOGY DEPT                      20131110 00:00 WLS          X
+UCLA_PAYEES      51 NPI             .00 1891110888   UCLA ENTERTAINMENT IND MEDGRP            20150428 00:00 WLS          X
+UCLA_PAYEES      52 NPI             .00 1023020344   SCN PODIATRY BLUE SHIELD BA [380602]     20150928 00:00 WLS          X
+UCLA_PAYEES      53 NPI             .00 1750723540   SCN PODIATRY BA [380601]                 20150928 00:00 WLS          X
+UCLA_PAYEES      54 NPI             .00 1568883247   RON HCP LOS ALAMITOS BA [270402]         20151110 00:00 WLS          X
+UCLA_PAYEES      55 NPI             .00 1568883247   RON HCP NORTHRIDGE BA [270401]           20151110 00:00 WLS          X
+UCLA_PAYEES      56 NPI             .00 1750723540   UCLA INTEGRATED PROVIDER NETWORK         20160107 00:00 WLS          X
+UCLA_PAYEES      57 NPI             .00 1750723540   PCP EIMG Bob Hope                        20160301 00:00 WLS          X
+UCLA_PAYEES      58 NPI             .00 1750723540   PCP EIMG Jack Skirball                   20160301 00:00 WLS          X
+UCLA_PAYEES      59 NPI             .00 1750723540   PCP EIMG Santa Clarita                   20160301 00:00 WLS          X
+UCLA_PAYEES      60 NPI             .00 1750723540   PCP EIMG Toluca Lake                     20160301 00:00 WLS          X
+UCLA_PAYEES      61 NPI             .00 1750723540   PCP EIMG Westside                        20160301 00:00 WLS          X
+UCLA_PAYEES      62 NPI             .00 1770944068   UCLA EMIG Community                      20160418 00:00 WLS          X
+UCLA_PAYEES      63 NPI             .00 1609249408   UCLA UROLOGY ASSOCIATES                  20170817 00:00 WLS          X
+UCLA_PAYEES      64 NPI             .00 1336615988   UCLA IPN SCOI                            20190304 00:00 WLS          X
+UCLA_PAYEES      65 NPI             .00 1326096165   UCLA DEPARTMENT OF ANESTHESIOLOGY        20190701 00:00 WLS          X
+UCLA_PAYEES      66 NPI             .00 1215381843   UCLA HEALTH DIGESTIVE DISEASES W HILLS   20200124 00:00 WLS          X
+UCLA_PAYEES      67 NPI             .00 1740831437   UCLA HEALTH SC DIGESTIVE DISEASE VALENCI 20200129 00:00 WLS          X
+UCLA_PAYEES      68 NPI             .00 1740634369   UCLA HEALTH PAIN MANAGEMENT SANTA CLARIT 20201217 00:00 WLS          X
+UCLA_PAYEES     101 TIN             .00 954409418    ARIE BELLDEGRUN MD                       20131110 00:00 WLS          X
+UCLA_PAYEES     102 TIN             .00 300492085    BERT J THOMAS MD                         20131110 00:00 WLS          X
+UCLA_PAYEES     103 TIN             .00 954377219    UCLA PACKAGE BILLING                     20131110 00:00 WLS          X
+UCLA_PAYEES     104 TIN             .00 953379315    ROBERT SMITH MD                          20131110 00:00 WLS          X
+UCLA_PAYEES     105 TIN             .00 954373070    UCLA OB-GYN MEDICAL GROUP                20131110 00:00 WLS          X
+UCLA_PAYEES     106 TIN             .00 954558726    UCLA EMERGENCY MEDICINE PHYSICIANS GROUP 20131110 00:00 WLS          X
+UCLA_PAYEES     107 TIN             .00 954544776    UCLA UROLOGY ASSOCIATES                  20131110 00:00 WLS          X
+UCLA_PAYEES     108 TIN             .00 954535613    UCLA PLASTIC SURGERY ASSC                20131110 00:00 WLS          X
+UCLA_PAYEES     109 TIN             .00 954373071    UCLA DEPT OF MEDICINE PROFESSIONAL GROUP 20131110 00:00 WLS          X
+UCLA_PAYEES     110 TIN             .00 061720408    PLASTIC SURG GRP OF UCLA                 20131110 00:00 WLS          X
+UCLA_PAYEES     111 TIN             .00 953901330    JOHN GORDON FRAZEE MD                    20131110 00:00 WLS          X
+UCLA_PAYEES     112 TIN             .00 680648422    UCLA PEDIATRICS                          20131110 00:00 WLS          X
+UCLA_PAYEES     113 TIN             .00 954372159    UCLA FAMILY HEALTH CENTER                20131110 00:00 WLS          X
+UCLA_PAYEES     114 TIN             .00 954379486    JULES STEIN EYE INSTITUTE                20131110 00:00 WLS          X
+UCLA_PAYEES     115 TIN             .00 900943683    UC REGENTS UCLA DMPG COMMUNITY           20131110 00:00 WLS          X
+UCLA_PAYEES     116 TIN             .00 953986377    ERIC E. JOHNSON MD INC.                  20131110 00:00 WLS          X
+UCLA_PAYEES     117 TIN             .00 800882613    UCLA DMPG SOUTH BAY                      20131110 00:00 WLS          X
+UCLA_PAYEES     118 TIN             .00 953738337    HILLEL LAKS MD INC                       20131110 00:00 WLS          X
+UCLA_PAYEES     119 TIN             .00 954379487    UCLA NEUROLOGICAL GROUP                  20131110 00:00 WLS          X
+UCLA_PAYEES     120 TIN             .00 954593813    GONDA GOLDSCHMIED VAS CTR                20131110 00:00 WLS          X
+UCLA_PAYEES     121 TIN             .00 954505291    UCLA ORTHOPAEDIC SURGERY                 20131110 00:00 WLS          X
+UCLA_PAYEES     122 TIN             .00 954544777    UCLA NEUROSURGERY ASSOCIATES             20131110 00:00 WLS          X
+UCLA_PAYEES     123 TIN             .00 954373072    UCLA DERMATOLOGY MEDICAL GROUP           20131110 00:00 WLS          X
+UCLA_PAYEES     124 TIN             .00 481285027    DUNCAN Q MCBRIDE MD                      20131110 00:00 WLS          X
+UCLA_PAYEES     125 TIN             .00 800543544    UCLA SANTA MONICA NEUROLOGY GRP PRA      20131110 00:00 WLS          X
+UCLA_PAYEES     126 TIN             .00 954716870    UCLA GYNECOLOGIC ONCOLOGY                20131110 00:00 WLS          X
+UCLA_PAYEES     127 TIN             .00 954542847    UCLA HEAD/NECK SURG ASSOC                20131110 00:00 WLS          X
+UCLA_PAYEES     128 TIN             .00 954621169    UCLA THORACIC ONC SURGERY                20131110 00:00 WLS          X
+UCLA_PAYEES     129 TIN             .00 954505291    UCLA ORTHOPAEDICS PT GROUP               20131110 00:00 WLS          X
+UCLA_PAYEES     130 TIN             .00 954632149    UCLA ORAL MAX SURGERY                    20131110 00:00 WLS          X
+UCLA_PAYEES     131 TIN             .00 900387443    UCLA CPN SANTA MONICA BAY PHYSICIANS     20131110 00:00 WLS          X
+UCLA_PAYEES     132 TIN             .00 954561123    UCLA-RAD ONC GRP PRACTICE                20131110 00:00 WLS          X
+UCLA_PAYEES     133 TIN             .00 953812774    ASSOCIATED GENENERAL SURGEONS            20131110 00:00 WLS          X
+UCLA_PAYEES     134 TIN             .00 953083197    TIMOTHY A MILLER MD                      20131110 00:00 WLS          X
+UCLA_PAYEES     135 TIN             .00 954377221    UCLA PRACTICE PLAN                       20131110 00:00 WLS          X
+UCLA_PAYEES     136 TIN             .00 954045941    SURGICAL ONC ASC WESTWOOD                20131110 00:00 WLS          X
+UCLA_PAYEES     137 TIN             .00 953159818    UNIV HEAD & NECK ASSOC                   20131110 00:00 WLS          X
+UCLA_PAYEES     138 TIN             .00 954533269    UCLA PED SURGERY ASSOC                   20131110 00:00 WLS          X
+UCLA_PAYEES     139 TIN             .00 954449910    DEPT OF NUCLEAR MEDICINE                 20131110 00:00 WLS          X
+UCLA_PAYEES     140 TIN             .00 954368744    UCLA RADIOLOGY MED GROUP                 20131110 00:00 WLS          X
+UCLA_PAYEES     141 TIN             .00 954535607    UCLA SURGICAL ONC ASSOC                  20131110 00:00 WLS          X
+UCLA_PAYEES     142 TIN             .00 954546865    UCLA LIVER PANCREAS TRANS                20131110 00:00 WLS          X
+UCLA_PAYEES     143 TIN             .00 954546311    UCLA CARDIOTHORACIC SURG                 20131110 00:00 WLS          X
+UCLA_PAYEES     144 TIN             .00 954717330    UCLA PERINATAL GROUP                     20131110 00:00 WLS          X
+UCLA_PAYEES     145 TIN             .00 067380774    ELLIOT ABEMAYOR MD                       20131110 00:00 WLS          X
+UCLA_PAYEES     146 TIN             .00 954372298    UCLA DEPT OF PEDIATRICS                  20131110 00:00 WLS          X
+UCLA_PAYEES     147 TIN             .00 953747870    SHERWIN ISENBERG MD                      20131110 00:00 WLS          X
+UCLA_PAYEES     148 TIN             .00 953759190    JACOB RAJFER MD                          20131110 00:00 WLS          X
+UCLA_PAYEES     149 TIN             .00 953901330    JOHN G FRAZEE MD                         20131110 00:00 WLS          X
+UCLA_PAYEES     150 TIN             .00 954684995    UCLA PATHOLOGY DEPT                      20131110 00:00 WLS          X
+UCLA_PAYEES     151 TIN             .00 611729294    UCLA ENTERTAINMENT IND MEDGRP            20150428 00:00 WLS          X
+UCLA_PAYEES     152 TIN             .00 201820900    SCN PODIATRY BLUE SHIELD BA [380602]     20150928 00:00 WLS          X
+UCLA_PAYEES     153 TIN             .00 900939967    SCN PODIATRY BA [380601]                 20150928 00:00 WLS          X
+UCLA_PAYEES     154 TIN             .00 300802553    RON HCP LOS ALAMITOS BA [270402]         20151110 00:00 WLS          X
+UCLA_PAYEES     155 TIN             .00 300802553    RON HCP NORTHRIDGE BA [270401]           20151110 00:00 WLS          X
+UCLA_PAYEES     156 TIN             .00 900939967    UCLA INTEGRATED PROVIDER NETWORK         20160107 00:00 WLS          X
+UCLA_PAYEES     157 TIN             .00 364827736    UCLA EMIG Community                      20160418 00:00 WLS          X
+UCLA_PAYEES     158 TIN             .00 900939967    UCLA IPN SCOI                            20170817 00:00 WLS          X
+UCLA_PAYEES     159 TIN             .00 954395492    UCLA DEPARTMENT OF ANESTHESIOLOGY        20170701 00:00 WLS          X
+UCLA_PAYEES     160 TIN             .00 954373071    UCLA HEALTH DIGESTIVE DISEASES W HILLS   20200124 00:00 WLS          X

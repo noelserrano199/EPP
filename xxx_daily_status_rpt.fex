@@ -1,0 +1,692 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Select oldest file not archived/status old
+-*-----------------------------------------------------------------------------
+APP MAP OUTARCV
+-RUN
+APP MAP OUTARCV '&OUTARCV.EVAL'
+-RUN
+APP QUERY OUTARCV HOLD
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Check if file is in archive folder
+-*-----------------------------------------------------------------------------
+-RUN
+-TYPE &LINES.EVAL
+DEFINE FILE FOCAPPQ
+IFCT_FILE_DATE/A08  = GETTOK(FILENAME, 120, 1, '_', 8,  IFCT_FILE_DATE);
+IFCT_FILE_SRC/A06   = GETTOK(FILENAME, 120, 2, '_', 6,  IFCT_FILE_SRC);
+IFCT_FILE_PAYER/A25 = GETTOK(FILENAME, 120, 4, '_', 25, IFCT_FILE_PAYER);
+IFCT_FILE_TYPE/A06  = GETTOK(FILENAME, 120, 5, '_', 6,  IFCT_FILE_TYPE);
+IFCT_FILE_SEQ/A01   = GETTOK(FILENAME, 120, 7, '_', 1,  IFCT_FILE_SEQ);
+IFCT_FILE_EXT/A03   = GETTOK(FILENAME, 120, 2, '.', 3,  IFCT_FILE_EXT);
+NAME_LEN/I9         = ARGLEN(120, FILENAME, NAME_LEN);
+FILE_NAME/A55       = SUBSTR(55, FILENAME, 1, NAME_LEN-8, NAME_LEN, FILE_NAME);
+CREATDT/A8          = EDIT(DATE, '$$$$$$9999')| EDIT(DATE, '$$$99$$$$$')| EDIT(DATE, '99$$$$$$$$');
+CREATDTE/A14        = CREATDT||' 00:00';
+CREAT_DT/HYYMDm     = HINPUT(14, CREATDTE, 10, 'HYYMDm');
+FILE_SIZE/I8        = EDIT(SIZE);
+FILE_STS/A3         = 'ARC';
+ARCHIVE_YN/A1       = 'Y';
+FILE_DATE/A8YYMD    = IFCT_FILE_DATE;
+CUR30_DATE/A8YYMD   = DATEADD('&YYMD.EVAL', 'D', -30);
+END
+-*
+TABLE FILE FOCAPPQ
+PRINT IFCT_FILE_DATE    AS IFCT_FILE_DATE
+      IFCT_FILE_SEQ     AS IFCT_FILE_SEQ
+      IFCT_FILE_SRC     AS IFCT_FILE_SRC
+      IFCT_FILE_TYPE    AS IFCT_FILE_TYPE
+      IFCT_FILE_PAYER   AS IFCT_FILE_PAYER
+      CREAT_DT          AS IFCT_CREAT_DT
+      TIME              AS IFCT_CREAT_TIME
+      FILE_SIZE         AS IFCT_FILE_SIZE
+      FILENAME          AS IFCT_FILE_NAME
+      FILE_NAME
+      FILE_STS          AS IFCT_STS
+      ARCHIVE_YN        AS IFCT_ARCHIVE_YN
+BY    FILE_NAME         NOPRINT
+BY    CREAT_DT          NOPRINT
+BY    TIME              NOPRINT
+WHERE IFCT_FILE_EXT EQ '835';
+WHERE CREATDT   GE CUR30_DATE;
+ON TABLE SET ASNAMES  ON
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS IFRECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */
+      DISTINCT
+      SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4) AS FL_NAME
+     ,TO_CHAR(IFCT_STS_DT,'yyyy-mm-dd')      AS IFCT_STS_DT
+     ,TO_CHAR(IFCT_STS_DT,'HH24:MI')         AS IFCT_STS_TM
+     ,RTRIM(IFCT_FILE_PAYER)                 AS IFCT_FILE_PAYER
+     ,IFCT_STS
+     ,R.FILE_NAME                            AS REMIT_FL_NAME
+     ,SUBSTR(RTRIM(IFCT_FILE_NAME),1,55)     AS FILE_NAME
+     ,IFCT_FILE_DATE
+     ,IFCT_NO_ROWS
+     ,IFCT_CREAT_DT
+     ,TO_CHAR(TO_DATE('2013-01-01 '||(REPLACE(IFCT_CREAT_TIME, '.', ':'))
+         ,'YYYY-MM-DD HH24:MI:SS'),'HH24:MI')
+                                             AS IFCT_CREAT_TIME
+     ,IFCT_PAID_AMT_OUT
+     ,COALESCE(TO_CHAR(R.ACCEPT_DT,'mm/dd/yyyy'),TO_CHAR(R.REJECT_DT,'mm/dd/yyyy'),'          ')
+                                             AS ACCEPT_DT
+     ,(TO_CHAR(R.REJECT_DT,'yyyy-mm-dd'))    AS REJECT_DT
+     ,CASE WHEN COALESCE( (TO_CHAR(R.REJECT_DT,'yyyy-mm-dd')), ' ' ) = ' ' THEN
+       COALESCE( (TO_CHAR(R.ACCEPT_DT,'yyyy-mm-dd')),(TO_CHAR(R.PROCESS_DT,'yyyy-mm-dd')),
+                 (TO_CHAR(R.LOAD_DT,'yyyy-mm-dd')),(TO_CHAR(R.RECORD_CREATION_DT,'yyyy-mm-dd')),' ' ) ELSE
+       COALESCE( (TO_CHAR(R.REJECT_DT,'yyyy-mm-dd')), ' ' ) END AS DATE1
+     ,TO_CHAR(MAX(R.RECVD_AMT))              AS CHAR_RCV_AMT
+     ,MAX(R.RECVD_AMT)                       AS RECVD_AMT
+     ,CASE WHEN TO_DATE(IFCT_FILE_DATE,'YYYYMMDD') > CURRENT_DATE-5 THEN 'Y' ELSE 'N' END AS CHK_DT
+     ,CASE WHEN IFCT_STS_DT > CURRENT_DATE-12 THEN 'Y' ELSE 'N' END AS WNDW_DT
+     ,CASE WHEN (TRUNC(IFCT_STS_DT)-TRUNC(IFCT_CREAT_DT)) >= 2 THEN 2 ELSE (TRUNC(IFCT_STS_DT)-TRUNC(IFCT_CREAT_DT))
+	  END                                    AS DELAY_DAYS
+FROM  &IFCT.&IFCT_TBL.EVAL
+LEFT OUTER JOIN
+      REMIT_RUN_SUM R
+ON    SUBSTR(R.FILE_NAME,1,LENGTH( R.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+  AND R.BILL_SYS_C = 1
+WHERE TRUNC(IFCT_CREAT_DT) > TRUNC(SYSDATE)-30
+  AND RTRIM(IFCT_FILE_NAME) <> 'UCLA20190813_BOA_POST_EDCA.835'
+  AND (( TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 5), 'yyyy-mm-dd')
+      OR IFCT_STS NOT IN('OLD','DUP'))
+      OR ( R.ACCEPT_DT IS NULL AND R.REJECT_DT IS NULL )
+      OR ( TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 30), 'yyyy-mm-dd')
+            AND R.RECVD_AMT IS NULL AND R.REJECT_DT IS NULL ))
+  AND IFCT_STS NOT IN('REN','BAD','ABC')
+  AND NOT EXISTS (SELECT 1
+                  FROM REMIT_RUN_SUM S
+                  WHERE S.FILE_NAME   = R.FILE_NAME
+                     AND S.BILL_SYS_C = 1
+                     AND COALESCE((TO_CHAR(S.REJECT_DT,'yyyy-mm-dd')), ' ' )  = ' '
+                     AND COALESCE((TO_CHAR(R.REJECT_DT,'yyyy-mm-dd')), ' ' ) <> ' ')
+  AND RTRIM(IFCT_FILE_NAME) <> '20180703_BOA_POST_TAPESTRY_ERA_P_1725.835'
+  AND RTRIM(IFCT_FILE_NAME) <> '20200709_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_B.835'
+GROUP BY
+      TO_CHAR(IFCT_STS_DT,'yyyy-mm-dd')
+     ,RTRIM(IFCT_FILE_PAYER)
+     ,TO_CHAR(IFCT_STS_DT,'HH24:MI')
+     ,IFCT_STS
+     ,SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+     ,R.FILE_NAME
+     ,SUBSTR(RTRIM(IFCT_FILE_NAME),1,55)
+     ,IFCT_STS_DT
+     ,IFCT_FILE_DATE
+     ,IFCT_NO_ROWS
+     ,IFCT_CREAT_DT
+     ,TO_CHAR(TO_DATE('2013-01-01 '||(REPLACE(IFCT_CREAT_TIME, '.', ':'))
+         ,'YYYY-MM-DD HH24:MI:SS'),'HH24:MI')
+     ,IFCT_PAID_AMT_OUT
+     ,(TO_CHAR(R.REJECT_DT,'yyyy-mm-dd'))
+     ,(TO_CHAR(R.ACCEPT_DT,'yyyy-mm-dd'))
+     ,COALESCE(TO_CHAR(R.ACCEPT_DT,'mm/dd/yyyy'),TO_CHAR(R.REJECT_DT,'mm/dd/yyyy'),'          ')
+     ,(TO_CHAR(R.PROCESS_DT,'yyyy-mm-dd'))
+     ,(TO_CHAR(R.LOAD_DT,'yyyy-mm-dd'))
+     ,(TO_CHAR(R.RECORD_CREATION_DT,'yyyy-mm-dd'))
+ORDER BY 1,2,3,13 DESC
+;
+TABLEF FILE SQLOUT
+LIST *
+ON TABLE HOLD AS HDIFCT
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */
+      SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+                              AS FILE_NAME
+     ,IFCT_FILE_ID            AS FILE_ID
+     ,DSFA_REMIT_RUN_NO       AS REMIT_RUN
+     ,DSFA_ACCEPT_DATE        AS ACCEPT_DT
+     ,DSFA_RECEIVED_AMT       AS RECVD_AMT
+     ,DSFA_POSTED_AMT         AS POSTED_AMT
+     ,DSFA_UNPOSTED_AMT       AS UNPOSTED_AMT
+FROM  &DSFA.EVAL&DSFA_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    RTRIM(IFCT_FILE_ID) = RTRIM(DSFA_IFCT_FILE_ID)
+WHERE DSFA_REPORT_DATE    = TRUNC(SYSDATE)
+ORDER BY 1
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS UMRECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP005
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP005';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+JOIN LEFT_OUTER
+ HDIFCT.HDIFCT.FL_NAME   IN HDIFCT TO ALL
+ IFRECS.IFRECS.FILE_NAME IN IFRECS TAG J0 AS J0
+END
+-RUN
+JOIN LEFT_OUTER
+ FL_NAME IN HDIFCT TO FILE_NAME IN UMRECS AS J1
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP006
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP006';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SET PAGE  = NOLEAD
+SET LINES = 9999
+SET PRINTPLUS = ON
+-SET &RPT_DATE = EDIT('&MDYY.EVAL', '99/99/9999');
+-SET &RPT_TM   = EDIT('&NOWTIME.EVAL', '99$:99');
+-*
+DEFINE FILE HDIFCT
+SORT_STS_DT/A8MDYY = EDIT(IFCT_STS_DT,'$$$$$99$99')|EDIT(IFCT_STS_DT,'9999$$$$$$');
+XSORT_STS_DT/A8MDYY = SORT_STS_DT;
+PROCESS_DT/A8MDYY  = EDIT(IFCT_STS_DT,'$$$$$99$99')|EDIT(IFCT_STS_DT,'9999$$$$$$');
+STAT_DESC/A9       = DECODE IFCT_STS('OLD' 'Processed'
+                                     'ERR' 'Error'
+                                     'DUP' 'Duplicate'
+                                     'ARC' 'InArchive'
+									 'HLD' 'On Hold'
+                                     'NEW' 'New Files'
+                                     'INP' 'InProcess'
+                                     'ABC' 'ABC Files'
+                                     ELSE 'Error');
+SORT_KEY/I1        = DECODE IFCT_STS('NEW' 1 'HLD' 2 'INP' 3 'ERR' 4 'ARC' 5 'DUP' 6 'OLD' 7 ELSE 9);
+FROM_CC_DT/MDYY    = HDATE(IFCT_CREAT_DT,'MDYY');
+PAID_AMOUNT/D13.2CM= IFCT_PAID_AMT_OUT;
+XPAID_AMOUNT/A17   = FTOA(PAID_AMOUNT, '(D13.2CM)', 'A17');
+STS_TM/A8          = IFCT_STS_TM;
+RPT_TM/A5          = IF EDIT('&NOWTIME.EVAL', '99') GE '12'
+                        THEN EDIT('&NOWTIME.EVAL', '99$:99')
+                     ELSE    EDIT('&NOWTIME.EVAL', '99$:99') ;
+NO_OF_ROWS/I6   = IFCT_NO_ROWS;
+SUBJECT/A60     = 'Question - EPP Status Report';
+EM_LINEA/A125   = 'The '|SUBJECT||' for '|'&RPT_DATE.EVAL'||' is attached.';
+MAIL_LINK/A150  = '<A href="mailto:WSchwartz@mednet.ucla.edu?subject='|SUBJECT|'">WSchwartz@mednet.ucla.edu';
+HEAD_LINE_21/A45 = 'For Files Processed as of '|'&RPT_DATE.EVAL'|' at '|'&RPT_TM.EVAL';
+HEADLINE_22/A28  = 'with any questions or issues';
+PROCESS_DATE/A8MDYY    = EDIT(DATE1,'$$$$$99$99')|EDIT(DATE1,'9999$$$$$$');
+YPOSTED_AMT/D13.2SCM   = RECVD_AMT;
+XPOSTED_AMT/A17        = FTOA(RECVD_AMT, '(D13.2CM)', 'A17');
+WPOSTED_AMT/D13.2SCM   = POSTED_AMT;
+XUNPOSTED_AMT/D13.2SCM = UNPOSTED_AMT;
+RECEIVED_AMT/A17  =   IF PROCESS_DATE EQ ' '  THEN ' '
+                 ELSE IF CHAR_RCV_AMT EQ '0'  THEN '$.00'
+                 ELSE IF CHAR_RCV_AMT IS MISSING AND REJECT_DT IS NOT MISSING THEN 'REJECTED'
+                 ELSE XPOSTED_AMT;
+ZPOSTED_AMT/A17        = IF ACCEPT_DT  NE ' ' AND POSTED_AMT EQ '.'   THEN RECEIVED_AMT
+                    ELSE IF POSTED_AMT EQ '.'                         THEN ' '
+                    ELSE FTOA(POSTED_AMT, '(D13.2CM)', 'A17');
+YUNPOSTED_AMT/A17 =   IF EDIT(IFCT_STS_DT,'$$$$$99$99')|EDIT(IFCT_STS_DT,'9999$$$$$$') EQ EDIT('&MDYY.EVAL', '99999999') THEN ' '
+                 ELSE IF ACCEPT_DT    NE ' '   THEN '$.00'
+                 ELSE IF ZPOSTED_AMT  EQ ' '   THEN XPAID_AMOUNT
+                 ELSE FTOA(UNPOSTED_AMT, '(D13.2CM)', 'A17');
+XUNPOSTED_AMT/D13.2SCM = IF EDIT(IFCT_STS_DT,'$$$$$99$99')|EDIT(IFCT_STS_DT,'9999$$$$$$') EQ EDIT('&MDYY.EVAL', '99999999')
+                                                THEN 0
+                    ELSE IF ACCEPT_DT    NE ' ' THEN 0
+                    ELSE IF ZPOSTED_AMT  EQ ' ' THEN PAID_AMOUNT
+                    ELSE IF UNPOSTED_AMT EQ '.' THEN 0
+                    ELSE UNPOSTED_AMT;
+XARCHIVE_YN/A1 = IF IFCT_ARCHIVE_YN EQ 'Y'     THEN 'Y'
+            ELSE IF IFCT_ARCHIVE_YN IS MISSING THEN 'N'
+            ELSE IF IFCT_ARCHIVE_YN EQ '.'     THEN 'N'
+            ELSE IF IFCT_ARCHIVE_YN EQ ' '     THEN 'N'
+            ELSE 'N';
+DUP_TST/A1 = IF FL_NAME EQ LAST FL_NAME THEN 'Y' ELSE 'N';
+END
+-*
+TABLE FILE HDIFCT
+ON TABLE SUBHEAD
+"Please reply to<+0>  <+0>Files in red at bottom of report have not been closed within 10 day window"
+"<MAIL_LINK<+0>UCLA Health System Faculty Practice Group ------ ERA Pre-Processor ERA File Status Report<+0>| ------- Data in these columns is from &RPT_DATE at 12:01AM ------- |"
+"With any questions or issues<+0><HEAD_LINE_21<+0>| --- This information will not change during the business day --- |"
+PRINT
+     IFCT_STS_TM        AS 'EPP,Process,Time'
+     FILE_NAME          AS 'Input File'
+     NO_OF_ROWS         AS 'No of,Rows'
+     FROM_CC_DT         AS 'File,Received,Date'
+     IFCT_CREAT_TIME    AS 'File,Received,Time'
+     PAID_AMOUNT        AS 'File,Total,Payments'
+COMPUTE
+     XARCHIVE_YN/A1 = IF   IFCT_STS EQ 'OLD'
+                       AND IFCT_ARCHIVE_YN EQ 'Y'     THEN 'Y'
+                 ELSE IF   IFCT_STS EQ 'OLD'          THEN 'N'
+                 ELSE ' ';    AS 'Xferd,To,EPIC'
+     RECEIVED_AMT       AS 'Amount,Received,by EPIC'
+     ZPOSTED_AMT        AS 'EPIC,Posted,Amount'
+-*     POSTED_AMT
+     YUNPOSTED_AMT      AS 'EPIC,UnPosted,Amount'
+-*     UNPOSTED_AMT
+     ACCEPT_DT          AS 'File,Closed,Date'
+     YPOSTED_AMT        NOPRINT
+     WPOSTED_AMT        NOPRINT
+     XUNPOSTED_AMT      NOPRINT
+     WNDW_DT            NOPRINT
+COMPUTE   STS_CNT/I3 = IF SORT_KEY NE LAST SORT_KEY
+                          THEN 1
+                       ELSE SORT_KEY+1; NOPRINT
+COMPUTE   ST_SW1/A1 =  IF STAT_DESC EQ 'Processed'
+                          THEN '2'
+                  ELSE IF STAT_DESC  EQ 'New Files'
+                         AND STS_CNT GT 1
+                          THEN '3'
+                  ELSE IF STAT_DESC  EQ 'Error'
+                         AND STS_CNT GT 1
+                          THEN '4'
+                  ELSE IF STAT_DESC  EQ 'InProcess'
+                         AND STS_CNT GT 1
+                          THEN '5'
+                  ELSE IF STAT_DESC  EQ 'On Hold'
+                         AND STS_CNT GT 1
+                          THEN '6'
+                  ELSE '1';  NOPRINT
+DELAY_DAYS              NOPRINT
+BY HIGHEST IFCT_STS_DT  NOPRINT
+BY XSORT_STS_DT         NOPRINT
+BY SORT_STS_DT          NOPRINT
+BY SORT_KEY             NOPRINT
+BY STAT_DESC            AS 'EPP,Status'
+BY PROCESS_DT           AS 'EPP,Process,Date'
+BY IFCT_FILE_PAYER      NOPRINT
+BY HIGHEST STS_TM       NOPRINT
+WHERE IFCT_STS_DT       GT '2016-02-01';
+WHERE DUP_TST           EQ 'N';
+ON XSORT_STS_DT SUBFOOT
+"  "
+ON SORT_STS_DT  SUBFOOT MULTILINES
+" <+0>Total For Process Date   - <PROCESS_DT><+0><ST.PAID_AMOUNT<+0> <+0><ST.YPOSTED_AMT<+0><ST.WPOSTED_AMT<+0><ST.XUNPOSTED_AMT"
+ON STAT_DESC    SUBFOOT MULTILINES
+" <+0>Total For Status - <STAT_DESC><+0><ST.PAID_AMOUNT<+0> <+0><ST.YPOSTED_AMT<+0><ST.WPOSTED_AMT<+0><ST.XUNPOSTED_AMT"
+WHEN CHK_DT EQ 'Y';
+ON SORT_KEY    SUBFOOT
+"  "
+ON TABLE SUBFOOT
+" <+0>Report Total - <+0><TOT.PAID_AMOUNT<+0> <+0><TOT.YPOSTED_AMT<+0><TOT.WPOSTED_AMT<+0><TOT.XUNPOSTED_AMT"
+ON TABLE SET PAGE NOLEAD
+ON TABLE SET ONLINE-FMT HTML
+ON TABLE SET HTMLCSS  ON
+ON TABLE SET ASNAMES  ON
+ON TABLE SET PAGE     NOPAGE
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE SET SPACES   1
+ON TABLE SET STYLE *
+     UNITS=IN,
+     PAGESIZE='Legal',
+     SQUEEZE=OFF,
+     ORIENTATION=LANDSCAPE,
+     SIZE=8,
+     FONT='VERDANA',
+     GRID=OFF,
+     WRAP=OFF, $
+-*
+TYPE=TABHEADING,
+     HEADALIGN=BODY,
+     FONT=ARIAL,
+     STYLE=BOLD,
+     SIZE=9,
+     COLOR='NAVY BLUE',
+     BORDER-COLOR=GREEN,
+     BORDER-TOP-STYLE=DOUBLE,
+     BORDER-TOP=MEDIUM,
+     BORDER-BOTTOM-STYLE=DOUBLE,
+     BORDER-BOTTOM=MEDIUM,  $
+TYPE=TABHEADING, LINE=1, ITEM=1, COLSPAN=2, SIZE=7, JUSTIFY=LEFT,   COLOR='STEEL BLUE',  $
+TYPE=TABHEADING, LINE=1, ITEM=2, COLSPAN=7, SIZE=12,JUSTIFY=CENTER, COLOR='NAVY BLUE',   $
+TYPE=TABHEADING, LINE=1, ITEM=3, COLSPAN=4, SIZE=8, JUSTIFY=CENTER, COLOR='RED',         $
+TYPE=TABHEADING, LINE=2, ITEM=1, COLSPAN=2, SIZE=7, JUSTIFY=LEFT,   COLOR='STEEL BLUE',  $
+TYPE=TABHEADING, LINE=2, ITEM=2, COLSPAN=7, SIZE=12,JUSTIFY=CENTER, COLOR='NAVY BLUE',   $
+TYPE=TABHEADING, LINE=2, ITEM=3, COLSPAN=4, SIZE=10,JUSTIFY=CENTER, COLOR='STEEL BLUE',  $
+TYPE=TABHEADING, LINE=3, ITEM=1, COLSPAN=2, SIZE=7, JUSTIFY=LEFT,   COLOR='STEEL BLUE',  $
+TYPE=TABHEADING, LINE=3, ITEM=2, COLSPAN=7, SIZE=12,JUSTIFY=CENTER, COLOR='NAVY BLUE',   $
+TYPE=TABHEADING, LINE=3, ITEM=3, COLSPAN=4, SIZE=10,JUSTIFY=CENTER, COLOR='STEEL BLUE',  $
+-*
+TYPE=TITLE,                          STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=STAT_DESC,        STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=PROCESS_DT,       STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=IFCT_STS_TM,      STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=FILE_NAME,        STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=NO_OF_ROWS,       STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=FROM_CC_DT,       STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=IFCT_CREAT_TIME,  STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=PAID_AMOUNT,      STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=ZPOSTED_AMT,      STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=YUNPOSTED_AMT,    STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=RECEIVED_AMT,     STYLE=BOLD,    JUSTIFY=CENTER,    $
+TYPE=TITLE, COLUMN=XARCHIVE_YN,      STYLE=BOLD,    JUSTIFY=CENTER,    $
+DEFMACRO=COND0001, MACTYPE=RULE, WHEN=N5  EQ 'Error',                  $
+DEFMACRO=COND0002, MACTYPE=RULE, WHEN=N5  EQ 'New Files',              $
+DEFMACRO=COND0003, MACTYPE=RULE, WHEN=N5  EQ 'InProcess',              $
+DEFMACRO=COND0004, MACTYPE=RULE, WHEN=N5  EQ 'On Hold',                $
+DEFMACRO=COND0005, MACTYPE=RULE, WHEN=N15 EQ 'N',                      $
+DEFMACRO=COND0006, MACTYPE=RULE, WHEN=N23 EQ 'N',                      $
+DEFMACRO=COND0007, MACTYPE=RULE, WHEN=N26 EQ 0,                        $
+DEFMACRO=COND0008, MACTYPE=RULE, WHEN=N26 EQ 1,                        $
+DEFMACRO=COND0009, MACTYPE=RULE, WHEN=N26 EQ 2,                        $
+-*
+TYPE=DATA,   COLUMN=POSTED_AMT,JUSTIFY=RIGHT,$
+TYPE=DATA,   COLUMN=POSTED_AMT,STYLE=BOLD,WHEN=POSTED_AMT EQ 'REJECTED',  $
+TYPE=DATA,   COLUMN=POSTED_AMT,COLOR=RED,WHEN=XPOSTED_AMT NE XPAID_AMOUNT,$
+-*
+TYPE=REPORT, COLUMN=PROCESS_DT,       SQUEEZE=0.50,                    $
+TYPE=REPORT, COLUMN=IFCT_STS_TM,      SQUEEZE=0.45,                    $
+TYPE=REPORT, COLUMN=FILE_NAME,        SQUEEZE=2.00,                    $
+TYPE=REPORT, COLUMN=NO_OF_ROWS,       SQUEEZE=0.35,                    $
+TYPE=REPORT, COLUMN=FROM_CC_DT,       SQUEEZE=0.50,                    $
+TYPE=REPORT, COLUMN=IFCT_CREAT_TIME,  SQUEEZE=0.50,                    $
+TYPE=REPORT, COLUMN=PAID_AMOUNT,      SQUEEZE=0.75,                    $
+TYPE=REPORT, COLUMN=RECEIVED_AMT,     SQUEEZE=0.75,                    $
+TYPE=REPORT, COLUMN=ZPOSTED_AMT,      SQUEEZE=0.75,                    $
+TYPE=REPORT, COLUMN=YUNPOSTED_AMT,    SQUEEZE=0.75,                    $
+TYPE=REPORT, COLUMN=XARCHIVE_YN,      SQUEEZE=0.50,                    $
+-*
+TYPE=DATA, COLUMN=N1,                                           $
+TYPE=DATA, COLUMN=N2,                                           $
+TYPE=DATA, COLUMN=N3,                                           $
+TYPE=DATA, COLUMN=N4,   STYLE=BOLD,                             $
+TYPE=DATA, COLUMN=N5,   STYLE=BOLD,                 JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N6,                                           $
+TYPE=DATA, COLUMN=N7,                                           $
+TYPE=DATA, COLUMN=N8,                               JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N9,                               JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N10,                                          $
+TYPE=DATA, COLUMN=N11,                                          $
+TYPE=DATA, COLUMN=N12,                              JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N13,                              JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N14,                              JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N15,                              JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N16,                              JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N17,                              JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N18,                              JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N19,                              JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N1,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N2,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N3,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N4,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N5,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N6,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N7,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N8,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N9,   COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N10,  COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N11,  COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N12,  COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N13,  COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N14,  COLOR=RED,              MACRO=COND0001, $
+TYPE=DATA, COLUMN=N15,  COLOR=RED,              MACRO=COND0001, JUSTIFY=CENTER,$
+-*
+TYPE=DATA, COLUMN=N1,   COLOR='MEDIUM BLUE',    MACRO=COND0002, $
+TYPE=DATA, COLUMN=N2,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N3,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N4,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N5,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N6,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N7,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N8,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N9,   COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N10,  COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N11,  COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N12,  COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N13,  COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N14,  COLOR='MEDIUM BLUE',    MACRO=COND0002,        $
+TYPE=DATA, COLUMN=N15,  COLOR='MEDIUM BLUE',    MACRO=COND0002, JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N1,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N2,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N3,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N4,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N5,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N6,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N7,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N8,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N9,   COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N10,  COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N11,  COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N12,  COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N13,  COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N14,  COLOR=TEAL,             MACRO=COND0003,        $
+TYPE=DATA, COLUMN=N15,  COLOR=TEAL,             MACRO=COND0003,  JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N1,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N2,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N3,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N4,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N5,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N6,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N7,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N8,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N9,   COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N10,  COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N11,  COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N12,  COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N13,  COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N14,  COLOR='MEDIUM BLUE',    MACRO=COND0004,        $
+TYPE=DATA, COLUMN=N15,  COLOR='MEDIUM BLUE',    MACRO=COND0004, JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N15,  COLOR='RED',            MACRO=COND0005, JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N1,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N2,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N3,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N4,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N5,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N6,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N7,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N8,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N9,   COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N10,  COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N11,  COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N12,  COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N13,  COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N14,  COLOR=RED,              MACRO=COND0006, $
+TYPE=DATA, COLUMN=N15,  COLOR=RED,              MACRO=COND0006, JUSTIFY=CENTER, $
+TYPE=DATA, COLUMN=N16,  COLOR=RED,              MACRO=COND0006, JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N17,  COLOR=RED,              MACRO=COND0006, JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N18,  COLOR=RED,              MACRO=COND0006, JUSTIFY=RIGHT,  $
+TYPE=DATA, COLUMN=N19,  COLOR=RED,              MACRO=COND0006, JUSTIFY=CENTER, $
+-*
+TYPE=DATA, COLUMN=N1,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N2,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N3,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N4,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N5,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N6,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N7,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N8,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N9,   BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N10,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N11,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N12,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N13,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N14,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N15,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N16,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N17,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N18,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+TYPE=DATA, COLUMN=N19,  BACKCOLOR='RGB(255 255 255)', MACRO=COND0007, $
+-*
+TYPE=DATA, COLUMN=N7,   BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N8,   BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N9,   BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N10,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N11,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N12,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N13,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N14,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N15,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N16,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N17,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N18,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+TYPE=DATA, COLUMN=N19,  BACKCOLOR='RGB(240 240 240)', MACRO=COND0008, $
+-*
+TYPE=DATA, COLUMN=N7,   BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N8,   BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N9,   BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N10,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N11,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N12,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N13,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N14,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N15,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N16,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N17,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N18,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+TYPE=DATA, COLUMN=N19,  BACKCOLOR='RGB(180 180 180)', MACRO=COND0009, $
+-*
+TYPE=SUBFOOT, HEADALIGN=BODY, STYLE=BOLD, SIZE=8,                      $
+-*
+TYPE=SUBFOOT, BY=SORT_STS_DT, BORDER-TOP=LIGHT,                        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=1, COLSPAN=1,                       $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=2, COLSPAN=3, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=3, COLSPAN=2, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=4, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=5, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=6, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=7, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=8, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=SORT_STS_DT, ITEM=9, COLSPAN=1, JUSTIFY=RIGHT,        $
+-*
+-*TYPE=SUBFOOT, BY=STAT_DESC,   BORDER-TOP=LIGHT,                      $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=1, COLSPAN=1,                       $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=2, COLSPAN=3, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=3, COLSPAN=2, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=4, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=5, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=6, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=7, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=8, COLSPAN=1, JUSTIFY=RIGHT,        $
+TYPE=SUBFOOT, BY=STAT_DESC,   ITEM=9, COLSPAN=1, JUSTIFY=RIGHT,        $
+-*
+TYPE=TABFOOTING, HEADALIGN=BODY, STYLE=BOLD,                           $
+TYPE=TABFOOTING, ITEM=1, COLSPAN=1,                                    $
+TYPE=TABFOOTING, ITEM=2, COLSPAN=6, JUSTIFY=RIGHT,                     $
+TYPE=TABFOOTING, ITEM=3, COLSPAN=1, JUSTIFY=RIGHT,                     $
+TYPE=TABFOOTING, ITEM=4, COLSPAN=1, JUSTIFY=RIGHT,                     $
+-*
+ENDSTYLE
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-TYPE If lines equal 0 then goto THE_END
+-TYPE -------------------------------------------------------------------------
+-IF   &LINES.EVAL   EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-TYPE -------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

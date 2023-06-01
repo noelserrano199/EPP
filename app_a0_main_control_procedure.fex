@@ -1,0 +1,806 @@
+-TYPE *************************************************************************
+-TYPE *                      &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-* Programmer     Date            Description of Change
+-* ----------- ----------    --------------------------------------------------
+-* WLS         12/22/2014    New Version
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-******************************************************************************
+-****  Execution Control Parameters  ******************************************
+-******************************************************************************
+-SET &EPP_VER    = 'EPP';
+-SET &CHK_ACTIV  = 'Y';
+-SET &CHK_ARCHV  = 'Y';
+-SET &ERA_FILE   = 'ALL';
+-*-SET &ERA_FILE   = '20211203_BOA_POST_EDC_EPIC_A.835';
+-*-SET &INPDIR = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\from_cc\Test_Files';
+-*-SET &OUTDIR = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\to_cc\Test_Files';
+-******************************************************************************
+-****       Restart Parameters       ******************************************
+-******************************************************************************
+-SET &RESTART    = 'N';
+-*-SET &RS_STEP_1  = 'AUDIT_REPORTS';
+-*-SET &RS_STEP_2  = 'STEP0020';
+-RUN
+-******************************************************************************
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO CHECK_ACTIVE1;
+-*-----------------------------------------------------------------------------
+-DEFAULTS
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'DEFAULTS';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL * Establish APP PATH and defaults
+-*-----------------------------------------------------------------------------
+-IF '&RESTART.EVAL' EQ 'Y' THEN GOTO RESTART;
+-INCLUDE EPP/EPP_&EPP_VER.EVAL_DEFAULTS
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-GOTO CHECK_ACTIVE1;
+-RESTART
+-INCLUDE EPP/EPP_RESTART_DEFAULTS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'DEFAULTS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &RS_FILE_ERR    EQ 'Y' THEN GOTO THE_END;
+-IF  '&RESTART.EVAL'  EQ 'Y' THEN GOTO &RS_STEP_1.EVAL;
+-*-----------------------------------------------------------------------------
+-CHECK_ACTIVE1
+-IF &CHK_ACTIV = 'N' THEN GOTO LOAD_IFCT;
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ACTIVE1';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL * Check if EPP is currently processing a file
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_CHK_IF_EPP_IS_ACTIVE
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ACTIVE1';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-LOAD_IFCT
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'LOAD_IFCT';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL * Load IFCT table with any new 835 files
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_LD_IFCT_TBL
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'LOAD_IFCT';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-SELECT_FILE
+-SET  &STEP        = '&FOCFEXNAME.EVAL' ||'.'||'SELECT_FILE';
+-SET  &NOWTIME     = HHMMSS(A8);
+-SET  &ERROR_IND   = 'NOERR';
+-SET  &DUP_FILE    = 'NODUP';
+-SET  &IFCT_STATUS = 'OLD';
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Select earliest file for processing
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      IFCT_FILE_ID
+     ,IFCT_STS
+     ,IFCT_FILE_PAYER
+     ,IFCT_FILE_NAME
+FROM
+(
+SELECT
+      CAST(IFCT_FILE_ID AS CHAR(08)) AS IFCT_FILE_ID
+     ,IFCT_STS
+     ,IFCT_FILE_PAYER
+     ,IFCT_FILE_NAME
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_STS               IN('NEW','RDO')
+-IF  '&ERA_FILE.EVAL' = 'ALL' THEN GOTO ALLFILES;
+  AND RTRIM(IFCT_FILE_NAME) = '&ERA_FILE.EVAL'
+-ALLFILES
+-*  AND RTRIM(IFCT_FILE_PAYER) <> 'EDC'
+ORDER BY
+-*      IFCT_FILE_NAME DESC
+      IFCT_FILE_SIZE DESC
+-*     ,IFCT_CREAT_DT
+-*     ,IFCT_CREAT_TIME DESC
+) T1
+WHERE ROWNUM = 1;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS FROM_HOLD FORMAT ALPHA
+END
+-RUN
+ 
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS&RECORDS.EVAL LINES&LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 GOTO ERRORS;
+-RUN
+-*-----------------------------------------------------------------------------
+-IF   &LINES.EVAL EQ 0 AND &FILE_CNTR EQ 0 THEN GOTO NO_FILES;
+-IF   &LINES.EVAL EQ 0                     THEN GOTO END_OF_FILES;
+-SET  &FILE_CNTR = &FILE_CNTR + 1;
+-IF   &FILE_CNTR.EVAL LE  6 THEN GOTO SET_FILE_TO_SEL;
+-TYPE ***************************************************************************
+-TYPE *** This EPP execution has reached the 6 file limit and will be stopped ***                                ***
+-TYPE ***************************************************************************
+-IF   &FILE_CNTR.EVAL GT  6 THEN GOTO END_OF_FILES;
+-RUN
+-*-----------------------------------------------------------------------------
+-SET_FILE_TO_SEL
+-SET  &STEP        = '&FOCFEXNAME.EVAL' ||'.'||'SET_FILE_TO_SEL';
+-SET  &NOWTIME     = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-READ FROM_HOLD &FILE_ID.I8. &FILE_STS.A3. &PAYER.A25. &FILE_NM.A80.
+-RUN
+-TYPE File Id: &FILE_ID.EVAL
+-RUN
+-IF   &IORETURN NE 0 GOTO ERRORS;
+-RUN
+-******************************************************************************
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT IFCT_FILE_ID
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_FILE_ID    = &FILE_ID.EVAL
+  AND IFCT_STS        IN('NEW','RDO')
+)   ST
+ON    ( UT.IFCT_FILE_ID = ST.IFCT_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_STS         = 'SEL'
+     ,UT.IFCT_STS_DT      = SYSDATE
+					,UT.IFCT_EPP_VERSION = '&EPP_VER.EVAL';
+END
+-RUN
+-IF   &RETCODE.EVAL NE 0 GOTO ERRORS;
+-RUN
+-******************************************************************************
+-FILEDEFS
+-SET  &FILE_NAME  = '&FILE_NM.EVAL';
+-SET  &835FILEIN  = '&INPDIR.EVAL'|'\'|'&FILE_NM.EVAL';
+-SET  &FILE_NAM   = GETTOK('&FILE_NM.EVAL', 120, 1, '.', 116,  'A116');
+-SET  &HLD_FILE   = SUBSTR(&FILE_NM.LENGTH,'&FILE_NAM.EVAL',1,9,9,'A9')
+-                   ||'BOA_ABC'||SUBSTR(116,'&FILE_NAM.EVAL',13,116,104,'A104');
+-SET  &FILE_EXT   = GETTOK('&FILE_NM.EVAL', 120, 2, '.',   3,  'A3');
+-SET  &CHKARCNM   = '&FILE_NAM.EVAL'||'_EPP'||'.'||'&FILE_EXT.EVAL';
+-SET  &FMTLOG     = '&LOGDIR.EVAL'|'FMTLOG_'|'&FILE_ID.EVAL'||'.txt';
+-SET  &FILOUT835  = '&OUTDIR.EVAL'|'\'|'&FILE_NAM.EVAL'||'_EPP'||'.'||'&FILE_EXT.EVAL';
+-SET  &835HLDOUT  = '&HLDDIR.EVAL'|'\'|'&HLD_FILE.EVAL'||'.'||'&FILE_EXT.EVAL';
+-TYPE &835FILEIN.EVAL
+-TYPE &FILOUT835.EVAL
+-RUN
+FILEDEF EDI835_BY_RT    DISK EDI835_BY_RT.ftm
+FILEDEF EDI835_BY_RT_LX DISK EDI835_BY_RT.ftm
+FILEDEF EDI835_W_CR_LF  DISK &835FILEIN.EVAL
+FILEDEF EDIOUT          DISK &FILOUT835.EVAL (RECFM V
+FILEDEF HLDOUT          DISK &835HLDOUT.EVAL (RECFM V
+FILEDEF EDITEMP         DISK EDITEMP.FTM
+FILEDEF LOGFMT          CLEAR
+-RUN
+FILEDEF LOGFMT          DISK &FMTLOG.EVAL  (APPEND
+-RUN
+-TYPE -------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'LOAD_IFCT';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-RESTART_VALUES
+-SET  &STEP        = '&FOCFEXNAME.EVAL' ||'.'||'RESTART_VALUES';
+-SET  &NOWTIME     = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RESTART_VALUES
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'RESTART_VALUES';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-IF   '&CHK_ARCHV.EVAL' EQ 'N' GOTO CHECK_ACTIVE2;
+-*-----------------------------------------------------------------------------
+-CHECK_ARCHIVE
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ARCHIVE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Check archive folder for current 835 file
+-*-----------------------------------------------------------------------------
+-SET &ARCVSTS = 'OK';
+-RUN
+-INCLUDE EPP_CHK_ARCHIVE_4_OUTPUT_FILE
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ARCHIVE';
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL   NE 0    GOTO ERRORS;
+-IF   '&ARCVSTS.EVAL' NE 'OK' GOTO SELECT_FILE;
+-*-----------------------------------------------------------------------------
+-CHECK_ACTIVE2
+-IF &CHK_ACTIV = 'N' THEN GOTO SET_FILE_TO_INP;
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ACTIVE2';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL * Check if EPP is currently processing a file
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_CHK_IF_EPP_IS_ACTIVE
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_ACTIVE1';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-SET_FILE_TO_INP
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SET_FILE_TO_INP';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Change status of file being processed to 'INP'
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT IFCT_FILE_ID
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_FILE_ID    = &FILE_ID.EVAL
+  AND IFCT_STS        = 'SEL'
+) ST
+ON    ( UT.IFCT_FILE_ID = ST.IFCT_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_STS         = 'INP'
+     ,UT.IFCT_STS_DT      = SYSDATE
+					,UT.IFCT_EPP_VERSION = '&EPP_VER.EVAL';
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-SET_RECORD_TYPE
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SET_RECORD_TYPE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL * Determine segment type of each 835 record
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_SET_RECTYP
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SET_RECORD_TYPE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-LOAD_ERA_TABLES
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'LOAD_ERA_TABLES';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL * Load all 835 segment tables
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_LD_ALL_TBLS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'LOAD_ERA_TABLES';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-TYPE &PAYER.EVAL
+-IF   &ERROR_IND.EVAL   EQ 'ERROR'     THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE  0          THEN GOTO ERRORS;
+-IF   '&PAYER.EVAL'     EQ 'SIGNATURE' THEN GOTO SIGNATURE_FILE;
+-IF   &NO_SVC_SEGS.EVAL EQ 'Y'         THEN GOTO NO_SVC_FILE;
+-*-----------------------------------------------------------------------------
+-RESET_RESULTS
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'RESET_RESULTS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_X01_RESET_RESULTS_TBLS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'RESET_RESULTS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-IF   '&PAYER.EVAL'     NE 'TAPESTRY' THEN GOTO CHECK_FOR_DUPS;
+-*-----------------------------------------------------------------------------
+-TAPESTRY
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'TAPESTRY';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_TP0_TAPESTRY_PROCEDURES
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'TAPESTRY';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-IF   '&PAYER.EVAL'     EQ 'TAPESTRY' THEN GOTO RESET_SE_COUNT;
+-*-----------------------------------------------------------------------------
+-CHECK_FOR_DUPS
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_4_DUPS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_CHECK_4_DUPLICATES
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_4_DUPS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-******************************************************************************
+-CORRECTION_MODULES
+-******************************************************************************
+-INCLUDE EPP_CORRECTION_MODULES
+-RUN
+-IF '&ERROR_IND.EVAL' EQ 'ERROR' THEN GOTO SET_FILE_STATUS;
+-******************************************************************************
+-******************************************************************************
+-CRCS_TABLE
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CRCS_TABLE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_LD_CRCS_TBL
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CRCS_TABLE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &ERROR_IND.EVAL EQ 'ERROR' THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL NE 0       THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-RESET_SE_COUNT
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'RESET_SE_COUNT';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RESET_SE_COUNT
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'RESET_SE_COUNT';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &ERROR_IND.EVAL EQ 'ERROR' THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL NE 0       THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-WRITE_835_RECS
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'WRITE_835_RECS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_WRITE_835_ALL
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'WRITE_835_RECS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &ERROR_IND.EVAL EQ 'ERROR'     THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL NE 0           THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-SET_FILE_STATUS
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SET_FILE_STATUS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Change status of processed file from 'INP' to 'OLD'
+-*-----------------------------------------------------------------------------
+-SET  &IFCT_STATUS = IF '&DUP_FILE.EVAL'  EQ 'DUP'
+-                       THEN 'DUP'
+-               ELSE IF '&ERROR_IND.EVAL' EQ 'ERROR'
+-                       THEN 'ERR'
+-               ELSE         'OLD';
+-RUN
+-*
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT
+      ISA_FILE_ID
+     ,(COALESCE(( SELECT
+               SUM( 0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT1),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT2),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT3),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT4),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT5),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT6),'0')) ) AS PLB_TOT_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &PLB.EVAL&PLB_TBL.EVAL
+         ON    PLB_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND PLB_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND PLB_ST_SEQ_NO          = ST_SEQ_NO
+        ),0)
+    +
+       COALESCE(( SELECT
+               SUM( TO_NUMBER(COALESCE(RTRIM(CLP_CLM_PYMT_AMT),  '0')) )   AS TOT_CLP_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &CLP.EVAL&CLP_TBL.EVAL
+         ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+           AND CLP_EXCL_RSN_CD        = '   '
+       ),0))                                                                AS TOT_PMT_AMT_OUT
+FROM  &ISA.EVAL&ISA_TBL.EVAL
+) ST
+ON ( UT.IFCT_FILE_ID         = ST.ISA_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_STS            = '&IFCT_STATUS.EVAL'
+     ,UT.IFCT_STS_DT         = SYSDATE
+     ,UT.IFCT_PAID_AMT_OUT   = ST.TOT_PMT_AMT_OUT
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL     NE 0 GOTO ERRORS;
+-IF   &IFCT_STATUS.EVAL NE 'OLD' THEN GOTO SELECT_FILE;
+-*-----------------------------------------------------------------------------
+-CHECK_FILE_ERRORS
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_FILE_ERRORS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_CEF_CHK_ERA_FILE_4_ERRORS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'CHECK_FILE_ERRORS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &ERROR_IND.EVAL EQ 'ERROR'     THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL NE 0           THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-******************************************************************************
+-AUDIT_REPORTS
+-******************************************************************************
+-*-OFFSETS
+-*-SET  &STEP     = '&FOCFEXNAME.EVAL'||'.'||'OFFSETS';
+-*-SET  &NOWTIME  = HHMMSS(A8);
+-*-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-SET  &MODULE = 'RO0'''||','||'''RO1'''||','||'''RO2'''||','||'''RO3'''||','||'''RO4'''||','||'''RO5'''||','||'''RO6'''||','||'''RO7'''||','||'''RO9'''||','||'''ROA'''||','||'''ROC'''||','||'''ROE'''||','||'''ROG'''||','||'''ROH'''||','||'''ROJ'''||','||'''ROK';
+-*-*-----------------------------------------------------------------------------
+-*SQL
+-*SELECT 1
+-*FROM DUAL
+-*WHERE EXISTS
+-*   ( SELECT 1
+-*     FROM  &CLP.EVAL&CLP_TBL.EVAL
+-*     WHERE CLP_EXCL_RSN_CD   IN('&MODULE.EVAL'))
+-*;
+-*TABLEF FILE SQLOUT
+-*PRINT *
+-*ON TABLE HOLD
+-*END
+-*-RUN
+-*-IF &RECORDS.EVAL EQ 0 THEN GOTO END_OF_REPORT;
+-*-RUN
+-*-SET &RC_SCHED_DESC = 'EPP Audit Report - Offsets';
+-*-SET &RC_OWNER      = 'svcfpgwf';
+-*-SET &RC_PARMS      = 'EPP_VER='||'&EPP_VER.EVAL'||','||'FILE_NAM='||'&FILE_NAM.EVAL'||','||'ARPT='||'OFFSET';
+-*-TYPE EPP_VER &EPP_VER.EVAL File &FILE_NAM.EVAL
+-*-RUN
+-*-INCLUDE DSTRUN/&RC_USER_ID.EVAL
+-*-RUN
+-*-*-----------------------------------------------------------------------------
+-*-SET  &NOWTIME = HHMMSS(A8);
+-*-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-*-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-IF   &RETCODE.EVAL   NE 0 THEN GOTO ERRORS;
+-*-RUN
+-*-TYPE SLEEP 30
+-*SLEEP 30
+-*-RUN
+-*-----------------------------------------------------------------------------
+-END_OF_REPORT
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'OFFSETS';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-RUN
+-TYPE -------------------------------------------------------------------------
+-IF '&RESTART.EVAL' EQ 'Y' THEN END_OF_FILES;
+-GOTO SELECT_FILE;
+-*-----------------------------------------------------------------------------
+-END_OF_FILES
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'END_OF_FILES';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Create Summary Reports
+-*-----------------------------------------------------------------------------
+SQL
+SELECT *
+FROM   &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE  ROWNUM = 1;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+TABLE FILE HOLD
+HEADING
+"   "
+"EPP Production Process Completed Successfully"
+"New files processed"
+"   "
+PRINT IFCT_STS NOPRINT
+ON TABLE SET PAGE NOPAGE
+ON TABLE SET ONLINE-FMT HTML
+ON TABLE SET HTMLCSS ON
+ON TABLE PCHOLD FORMAT HTML
+ON TABLE SET STYLE *
+     PAGESIZE='Letter',
+     LEFTMARGIN=0.250000,
+     RIGHTMARGIN=0.250000,
+     TOPMARGIN=0.250000,
+     BOTTOMMARGIN=0.250000,
+     SQUEEZE=ON,
+     ORIENTATION=LANDSCAPE,
+$
+TYPE=REPORT,
+     GRID=ON,
+     FONT=ARIAL,
+     SIZE=15,
+     COLOR='BLACK',
+     BACKCOLOR='NONE',
+     STYLE=NORMAL,
+$
+ENDSTYLE
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-NO_FILES
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'NO_FILES';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Create Summary Reports
+-*-----------------------------------------------------------------------------
+SQL
+SELECT *
+FROM   &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE  ROWNUM = 1;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+SET PAGE = NOPAGE
+TABLE FILE HOLD
+HEADING
+"EPP Production Process Completed Successfully"
+"No new files processed"
+PRINT IFCT_STS NOPRINT
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-*-----------------------------------------------------------------------------
+-SIGNATURE_FILE
+-******************************************************************************
+-********** Write payment total to IFCT table for Signature files    **********
+-******************************************************************************
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SIGNATURE_FILE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Copy file with no SVC segments to TO_CC folder
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT
+      ISA_FILE_ID
+     ,(COALESCE(( SELECT
+               SUM( 0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT1),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT2),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT3),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT4),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT5),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT6),'0')) ) AS PLB_TOT_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &PLB.EVAL&PLB_TBL.EVAL
+         ON    PLB_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND PLB_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND PLB_ST_SEQ_NO          = ST_SEQ_NO
+        ),0)
+    +
+       COALESCE(( SELECT
+               SUM( TO_NUMBER(COALESCE(RTRIM(CLP_CLM_PYMT_AMT),  '0')) )   AS TOT_CLP_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &CLP.EVAL&CLP_TBL.EVAL
+         ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+           AND CLP_EXCL_RSN_CD        = '   '
+       ),0))                                                                AS TOT_PMT_AMT_OUT
+FROM  &ISA.EVAL&ISA_TBL.EVAL
+) ST
+ON ( UT.IFCT_FILE_ID         = ST.ISA_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_STS            = '&IFCT_STATUS.EVAL'
+     ,UT.IFCT_STS_DT         = SYSDATE
+     ,UT.IFCT_PAID_AMT_OUT   = ST.TOT_PMT_AMT_OUT
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-NO_SVC_FILE
+-******************************************************************************
+-****** Copy Signature and "No SVC" files to TO_CC folder without change ******
+-******************************************************************************
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'NO_SVC_FILE';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Copy file with no SVC segments to TO_CC folder
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_MOV_NO_SVC_2_TO_CC
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP5100';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-SET_FILE_STATUS2
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'SET_FILE_STATUS2';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Change status of processed file from 'INP' to 'OLD'
+-*-----------------------------------------------------------------------------
+-SET  &IFCT_STATUS = IF '&DUP_FILE.EVAL'  EQ 'DUP'
+-                       THEN 'DUP'
+-               ELSE IF '&ERROR_IND.EVAL' EQ 'ERROR'
+-                       THEN 'ERR'
+-               ELSE         'OLD';
+-RUN
+-*
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT
+      ISA_FILE_ID
+     ,(COALESCE(( SELECT
+               SUM( 0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT1),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT2),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT3),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT4),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT5),'0'))
+                   +0-TO_NUMBER(COALESCE(RTRIM(PLB_PRVDR_ADJ_AMT6),'0')) ) AS PLB_TOT_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &PLB.EVAL&PLB_TBL.EVAL
+         ON    PLB_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND PLB_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND PLB_ST_SEQ_NO          = ST_SEQ_NO
+        ),0)
+    +
+       COALESCE(( SELECT
+               SUM( TO_NUMBER(COALESCE(RTRIM(CLP_CLM_PYMT_AMT),  '0')) )   AS TOT_CLP_AMT
+         FROM  &ISA.EVAL&ISA_TBL.EVAL
+         LEFT OUTER JOIN
+               &ST.EVAL&ST_TBL.EVAL
+         ON    ST_ISA_FILE_ID         = ISA_FILE_ID
+           AND ST_EXCL_RSN_CD         = '   '
+         LEFT OUTER JOIN
+               &CLP.EVAL&CLP_TBL.EVAL
+         ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+           AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+           AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+           AND CLP_EXCL_RSN_CD        = '   '
+       ),0))                                                                AS TOT_PMT_AMT_OUT
+FROM  &ISA.EVAL&ISA_TBL.EVAL
+) ST
+ON ( UT.IFCT_FILE_ID         = ST.ISA_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_STS            = '&IFCT_STATUS.EVAL'
+     ,UT.IFCT_STS_DT         = SYSDATE
+     ,UT.IFCT_PAID_AMT_OUT   = ST.TOT_PMT_AMT_OUT
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL     NE 0 GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-IF '&RESTART.EVAL' EQ 'Y' THEN GOTO THE_END;
+-GOTO SELECT_FILE;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN
