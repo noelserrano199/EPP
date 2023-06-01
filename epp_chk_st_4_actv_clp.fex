@@ -1,0 +1,100 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           08/09/2013  Changed WHERE TOTAL in STEP002 to WHERE
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+FROM  &ST.EVAL&ST_TBL.EVAL
+WHERE ST_EXCL_RSN_CD = '   '
+  AND NOT EXISTS
+   (  SELECT 1
+      FROM   &CLP.EVAL&CLP_TBL.EVAL
+      WHERE  CLP_ISA_FILE_ID   = ST_ISA_FILE_ID
+        AND  CLP_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+        AND  CLP_ST_SEQ_NO     = ST_SEQ_NO
+        AND  CLP_EXCL_RSN_CD   = '   ' )
+ORDER BY 1,2,3
+) ST
+ON  (    ST.ST_ISA_FILE_ID     = UT.ST_ISA_FILE_ID
+     AND ST.ST_GS_GRP_SEQ_NO   = UT.ST_GS_GRP_SEQ_NO
+     AND ST.ST_SEQ_NO          = UT.ST_SEQ_NO
+     AND ST.ST_EPP_GEN_SEQ     = UT.ST_EPP_GEN_SEQ)
+WHEN MATCHED THEN
+UPDATE SET UT.ST_EXCL_RSN_CD   = 'NCL'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS2
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

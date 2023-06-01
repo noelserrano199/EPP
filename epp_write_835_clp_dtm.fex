@@ -1,0 +1,130 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Write CLP_DTM 835 Transactions
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      'CLP_DTM' "CLP_DTM"
+     ,CLP_DTM_DTTM_QLFR
+     ,CLP_DTM_DATE
+     ,CLP_DTM_TIME
+     ,CLP_DTM_TIME_CD
+     ,CLP_DTM_DTTM_PD_FMT_QLFR
+     ,CLP_DTM_DTTM_PD
+     ,CLP_DTM_GS_GRP_SEQ_NO
+     ,CLP_DTM_ST_SEQ_NO
+     ,CLP_DTM_LX_SEQ_NO
+     ,CLP_DTM_CLP_CLM_SEQ_NO
+     ,CLP_DTM_SEQ_NO
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID   = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO     = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD   = '   '
+INNER JOIN
+      &CLP_DTM.EVAL&CLP_DTM_TBL.EVAL
+ON    CLP_DTM_ISA_FILE_ID    = CLP_ISA_FILE_ID
+  AND CLP_DTM_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+  AND CLP_DTM_ST_SEQ_NO      = CLP_ST_SEQ_NO
+  AND CLP_DTM_LX_SEQ_NO      = CLP_LX_SEQ_NO
+  AND CLP_DTM_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+  AND CLP_DTM_EXCL_RSN_CD    = '   '
+WHERE ST_EXCL_RSN_CD         = '   '
+ORDER BY
+      CLP_DTM_GS_GRP_SEQ_NO
+     ,CLP_DTM_ST_SEQ_NO
+     ,CLP_DTM_LX_SEQ_NO
+     ,CLP_DTM_CLP_CLM_SEQ_NO
+     ,CLP_DTM_SEQ_NO
+;
+TABLE FILE SQLOUT
+PRINT
+  COMPUTE C_REQ_TYPE/A4       = 'DTM*';
+  COMPUTE C_GS_SEQ_NO/I5      = CLP_DTM_GS_GRP_SEQ_NO;
+  COMPUTE C_ST_SEQ_NO/I7      = CLP_DTM_ST_SEQ_NO;
+  COMPUTE C_REC_SEQ_IND/A2    = '50';
+  COMPUTE C_LX_SEQ_NO/I4      = CLP_DTM_LX_SEQ_NO;
+  COMPUTE C_CLP_SEQ_NO/I6     = CLP_DTM_CLP_CLM_SEQ_NO;
+  COMPUTE C_REC_SEQ_CLM/A2    = '30';
+  COMPUTE C_SVC_SEQ_NO/I5     = CLP_DTM_SEQ_NO;
+  COMPUTE C_SERV_SEQ_IND/A2   = '00';
+  COMPUTE C_SVC_CAS_SEQ_NO/I4 = 0;
+  COMPUTE C_EDIVAL/A600V = C_REQ_TYPE || CLP_DTM_DTTM_QLFR || '*' ||
+                          CLP_DTM_DATE || '*' || CLP_DTM_TIME || '*' ||
+                          CLP_DTM_TIME_CD || '*' || CLP_DTM_DTTM_PD_FMT_QLFR
+                          || '*' || CLP_DTM_DTTM_PD; NOPRINT
+  COMPUTE C_RMVSPC/A600V = TRIMV('T', C_EDIVAL, 600, ' ', 1, C_RMVSPC); NOPRINT
+  COMPUTE C_EDIREC/A600V = TRIMV('T', C_RMVSPC, 600, '*', 1, C_EDIREC) | '~';
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS EDITEMP FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

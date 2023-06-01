@@ -1,0 +1,110 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-*
+-* Change History:
+-*
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-TYPE *************************************************************************
+-TYPE Only BOAMIXED Files
+-TYPE *************************************************************************
+-IF  '&PAYER.EVAL' NE 'BOAMIXED' THEN GOTO THE_END;
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &DIC.EVAL&DIC_TBL.EVAL
+SELECT
+      DIC_INVOICE_NO
+     ,SUBSTR(DIC_CHECK_NO,1,LENGTH(DIC_CHECK_NO)-2)  AS DIC_CHECK_NO
+     ,DIC_CHECK_DATE
+     ,DIC_PAYER_ID_CD
+     ,DIC_ORG_CHK_NO
+     ,DIC_UPDT_DT
+     ,DIC_CHK_AMT
+     ,DIC_PAYER_NAME
+     ,DIC_FILE_NAME
+FROM   &ISA.EVAL&ISA_TBL.EVAL
+INNER JOIN
+       &IFCT.EVAL&IFCT_TBL.EVAL
+ON     IFCT_FILE_ID  = ISA_FILE_ID
+   AND RTRIM(IFCT_FILE_PAYER) = 'BOAMIXED'
+INNER JOIN
+      &DIC.EVAL&DIC_TBL.EVAL D1
+ON    DIC_FILE_NAME                      = RTRIM(IFCT_FILE_NAME)
+  AND UPPER(SUBSTR(DIC_PAYER_NAME,1,19)) = 'HEALTHCARE PARTNERS'
+  AND DIC_UPDT_DT                        > '22 OCT 2015'
+  AND NVL(RTRIM(SUBSTR(DIC_CHECK_NO,LENGTH(DIC_CHECK_NO)-1,1),'01234567890'), 'TRUE') <> 'TRUE'
+  AND NOT EXISTS
+    ( SELECT 1
+      FROM   &DIC.EVAL&DIC_TBL.EVAL D2
+      WHERE  D2.DIC_INVOICE_NO = D1.DIC_INVOICE_NO
+        AND  D2.DIC_CHECK_NO   = SUBSTR(D1.DIC_CHECK_NO,1,LENGTH(D1.DIC_CHECK_NO)-2))
+ORDER BY 1,2
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

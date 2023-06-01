@@ -1,0 +1,109 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Write GE 835 Transactions
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      'GE' "GE"
+     ,GE_NO_TXN_SETS_INCL
+     ,GE_GRP_CNTL_NO
+     ,GE_GRP_SEQ_NO
+     ,CAST(( SELECT COUNT(*)
+             FROM   &ST.EVAL&ST_TBL.EVAL
+             WHERE  ST_EXCL_RSN_CD = '   ' ) AS INTEGER) AS ST_COUNT
+FROM &GE.EVAL&GE_TBL.EVAL
+WHERE EXISTS
+   ( SELECT 1
+     FROM   &ST.EVAL&ST_TBL.EVAL
+     WHERE  ST_ISA_FILE_ID     = GE_ISA_FILE_ID
+       AND  ST_GS_GRP_SEQ_NO   = GE_GRP_SEQ_NO
+       AND  ST_EXCL_RSN_CD     = '   ' )
+ORDER BY GE_GRP_SEQ_NO
+;
+TABLEF FILE SQLOUT
+PRINT
+  COMPUTE C_ST_COUNT/A11      = TRIM('L',EDIT(ST_COUNT),11,'0',1,C_ST_COUNT); NOPRINT
+  COMPUTE C_REQ_TYPE/A4       = 'GE*';
+  COMPUTE C_GS_SEQ_NO/I5      = GE_GRP_SEQ_NO;
+  COMPUTE C_ST_SEQ_NO/I7      = 99999;
+  COMPUTE C_REC_SEQ_IND/A2    = '99';
+  COMPUTE C_LX_SEQ_NO/I4      = 0;
+  COMPUTE C_CLP_SEQ_NO/I6     = 99;
+  COMPUTE C_REC_SEQ_CLM/A2    = '99';
+  COMPUTE C_SVC_SEQ_NO/I5     = 99;
+  COMPUTE C_SERV_SEQ_IND/A2   = '99';
+  COMPUTE C_SVC_CAS_SEQ_NO/I4 = 99;
+  COMPUTE C_EDIVAL/A600V = C_REQ_TYPE||C_ST_COUNT||'*'||GE_GRP_CNTL_NO; NOPRINT
+  COMPUTE C_RMVSPC/A600V = TRIMV('T', C_EDIVAL, 600, ' ', 1, C_RMVSPC); NOPRINT
+  COMPUTE C_EDIREC/A600V = TRIMV('T', C_RMVSPC, 600, '*', 1, C_EDIREC) | '~';
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS EDITEMP FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

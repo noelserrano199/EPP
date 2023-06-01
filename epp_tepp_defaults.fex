@@ -1,0 +1,51 @@
+-******************************************************************************
+-*                  TEPP Environment Default Parameters
+-******************************************************************************
+-*-SET &ECHO=ALL;
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO THE_END;
+-RUN
+-SET &DFLTCNTL = 'X';
+-SET &EPP_VER  = 'TEPP';
+-RUN
+-*-INCLUDE EPP/EPP_COMMON_DEFAULTS
+SET SQLENGINE = SQLORA
+ENGINE SQLORA SET DEFAULT_CONNECTION clarityp_epp
+SQL SET INSERTSIZE 2000
+APP PATH &EPP_VER.EVAL &EPP_VER.EVAL_TABLES &EPP_VER.EVAL_REPORTS GLOBAL
+-*EPP EPP_REPORTS EPP_AUDIT_REPORTS
+-RUN
+-*
+-DEFAULT &FILE_CNTR     = 0;
+-DEFAULT &HELDPMT       = 'N';
+-DEFAULT &OUTEXP        = '\\VOPWFRS2\WebFocusDrop\OUTPUTDIR';
+-DEFAULT &INPDIR        = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\from_cc';
+-DEFAULT &OUTDIR        = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\to_cc';
+-DEFAULT &HLDDIR        = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\to_cc\SplitFiles';
+-DEFAULT &INARCV        = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\from_cc\00.00archive';
+-DEFAULT &OUTARCV       = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\to_cc\00.00archive';
+-DEFAULT &LOGDIR        = '\\VOPWFRS2\WebFocusDrop$\LOG\';
+-DEFAULT &RPTDIR        = '\\VOPWFRS2\WebFOCUSDrop$\REPORTS\';
+-DEFAULT &ARPTDIR       = '\\VOPWFRS2\WebFOCUSDrop$\AUDIT_REPORTS\';
+-DEFAULT &BKUPDIR       = '\\VOPWFRS2\WebFOCUSDrop$\EPP_TBL_BACKUPS\';
+-DEFAULT &ERABAL        = 'EPP';
+-DEFAULT &CNTRPYR       = 'EPP';
+-DEFAULT &RC_USER_ID    = 'svcfpgwf';
+-DEFAULT &RC_PARMS      = ' ';
+-DEFAULT &RC_SCHED_ID   = ' ';
+-DEFAULT &RC_SCHED_DESC = ' ';
+-DEFAULT &RC_OWNER      = 'svcfpgwf';
+-DEFAULT &TS            = 'EPP';
+-*
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-SET     &DUPLFILE    = '&LOGDIR.EVAL'|'FILEDUPS_'|'&YYMD.EVAL'|'_'|'&NOWTIME.EVAL'|'.txt';
+FILEDEF  LOGDUPL DISK '&DUPLFILE.EVAL'
+-RUN
+-THE_END
+-*-SET &ECHO=OFF;
+-RUN
+-INCLUDE EPP_&EPP_VER.EVAL_TABLES.FEX
+-RUN
+-THE_END
+-*-SET &ECHO=OFF;
+-RUN

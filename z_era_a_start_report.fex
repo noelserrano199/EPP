@@ -1,0 +1,94 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP          = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME       = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*-DEFAULT &INVCNO     = 'P1101574360';
+-*-SET &INVCNO     = 'P1317304630';
+-*-SET &INVCNO     = 'P1317955130';
+-*
+-*-SET &INVCNO     = 'P1317320880';
+-*-SET &INVCNO     = 'P1318192400';
+ 
+-*-SET &INVCNO       = 'P1317309670';
+-*-SET &INVCNO     = 'P1318506960';
+ 
+-SET &INVCNO     = 'P1325857200';
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+SET HTMLARCHIVE=ON
+COMPOUND LAYOUT PCHOLD FORMAT PDF
+UNITS=IN, $
+SECTION=section1, LAYOUT=ON, METADATA='0.5^0.5^0.5^0.5^4', MERGE=OFF, ORIENTATION=LANDSCAPE, PAGESIZE=TABLOID, SHOW_GLOBALFILTER=OFF, $
+-*SECTION=section1, LAYOUT=ON, METADATA='0.5^0.5^0.5^0.5^4', MERGE=OFF, ORIENTATION=LANDSCAPE, PAGESIZE=LEGAL, SHOW_GLOBALFILTER=OFF, $
+PAGELAYOUT=ALL, NAME='Page Master', $
+COMPONENT='report00', TEXT='report00', TOC-LEVEL=2, POSITION=(0.250 0.250), DIMENSION=(10.500 0.750), METADATA='HEIGHT: 0.750in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 0.250in; WIDTH: 13.500in', $
+PAGELAYOUT=1, NAME='Page layout 1', text='Page layout 1', TOC-LEVEL=1, BOTTOMMARGIN=0.5, TOPMARGIN=0.5, METADATA='BOTTOMMARGIN=0.5,TOPMARGIN=0.5,LEFTMARGIN=0,RIGHTMARGIN=0,', $
+COMPONENT='report11', TEXT='report11', TOC-LEVEL=2, POSITION=(0.250 0.750), DIMENSION=(1.500 2.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 0.750in; WIDTH: 2.000in', $
+COMPONENT='report12', TEXT='report12', TOC-LEVEL=2, POSITION=(0.250 4.300), DIMENSION=(1.500 2.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 5.000in; WIDTH: 2.000in', $
+COMPONENT='report13', TEXT='report13', TOC-LEVEL=2, POSITION=(5.000 0.750), DIMENSION=(1.500 9.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 5.000in; Z-INDEX: 100; TOP: 0.750in; WIDTH: 9.000in', $
+COMPONENT='report14', TEXT='report14', TOC-LEVEL=2, POSITION=(5.000 4.300), DIMENSION=(1.500 9.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 5.000in; Z-INDEX: 100; TOP: 5.000in; WIDTH: 9.000in', $
+-*COMPONENT='report14', TEXT='report14', TOC-LEVEL=2, POSITION=(5.000 4.500), DIMENSION=(1.500 9.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 5.000in; Z-INDEX: 100; TOP: 3.500in; WIDTH: 9.000in', $
+-*COMPONENT='report15', TEXT='report15', TOC-LEVEL=2, POSITION=(0.250 2.250), DIMENSION=(1.500 2.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 2.250in; WIDTH: 2.000in', $
+-*COMPONENT='report16', TEXT='report16', TOC-LEVEL=2, POSITION=(0.250 3.000), DIMENSION=(1.500 2.000),  METADATA='HEIGHT: 1.50in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 3.000in; WIDTH: 2.000in', $
+COMPONENT='report21', TEXT='report21', TOC-LEVEL=2, POSITION=(0.250 7.500), DIMENSION=(10.000 4.500), METADATA='HEIGHT: 4.500in; POSITION: absolute; LEFT: 0.250in; Z-INDEX: 100; TOP: 7.000in; WIDTH: 10.000in', $
+END
+SET COMPONENT='report00'
+-INCLUDE z_report_page_heading_rph.fex
+SET COMPONENT='report11'
+-INCLUDE z_era_clp_info_orig_r11.fex
+SET COMPONENT='report12'
+-INCLUDE z_era_clp_info_final_r12.fex
+SET COMPONENT='report13'
+-INCLUDE z_era_svc_info_orig_r13.fex
+SET COMPONENT='report14'
+-INCLUDE z_era_svc_info_final_r14.fex
+-*SET COMPONENT='report15'
+-*-INCLUDE z_era_svc_cas_info_orig_r15.fex
+-*SET COMPONENT='report16'
+-*-INCLUDE z_era_svc_cas_info_final_r16.fex
+SET COMPONENT='report21'
+-INCLUDE z_tdl_invoice_info_r21.fex
+COMPOUND END
+ 

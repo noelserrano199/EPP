@@ -1,0 +1,19 @@
+FILENAME=CNTR_PAYR, SUFFIX=FIX     , $
+  SEGMENT=SEG1, SEGTYPE=S0, $
+    FIELDNAME=EPP_OTLT_TBL_NAME,    ACTUAL=A12,    USAGE=A12,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=EPP_OTLT_NUM_CD,      ACTUAL=A06,    USAGE=I06,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $ 
+    FIELDNAME=EPP_OTLT_TEXT_CD,     ACTUAL=A06,    USAGE=A06,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $ 
+    FIELDNAME=EPP_OTLT_NUM_VALU,    ACTUAL=A12,    USAGE=D11.2,   $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=EPP_OTLT_TXT_VALU,    ACTUAL=A12,    USAGE=A12,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=EPP_OTLT_TXT_DESC,    ACTUAL=A40,    USAGE=A40,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=EPP_OTLT_LST_UPDT_DT, ACTUAL=A14,    USAGE=A14,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=EPP_OTLT_LST_UPDT_ID, ACTUAL=A12,    USAGE=A12,     $
+    FIELDNAME=,                     ACTUAL=A01,    USAGE=A01,     $
+    FIELDNAME=,                     ACTUAL=A02,    USAGE=A02,     $

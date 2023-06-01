@@ -1,0 +1,151 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Write TS3 835 Transactions
+-*-----------------------------------------------------------------------------
+SQL SQLORA
+SELECT
+      'TS3' "TS3"
+     ,TS3_REF_ID
+     ,TS3_FACILITY_CD
+     ,TS3_DATE
+     ,TS3_QTY01
+     ,TS3_AMT01
+     ,TS3_AMT02
+     ,TS3_AMT03
+     ,TS3_AMT04
+     ,TS3_AMT05
+     ,TS3_AMT06
+     ,TS3_AMT07
+     ,TS3_AMT08
+     ,TS3_AMT09
+     ,TS3_AMT10
+     ,TS3_AMT11
+     ,TS3_AMT12
+     ,TS3_AMT13
+     ,TS3_AMT14
+     ,TS3_AMT15
+     ,TS3_AMT16
+     ,TS3_AMT17
+     ,TS3_AMT18
+     ,TS3_QTY02
+     ,TS3_AMT19
+     ,TS3_GS_GRP_SEQ_NO
+     ,TS3_ST_SEQ_NO
+     ,TS3_LX_SEQ_NO
+     ,TS3_SEQ_NO
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &TS3.EVAL&TS3_TBL.EVAL
+ON    TS3_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND TS3_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND TS3_ST_SEQ_NO      = ST_SEQ_NO
+WHERE ST_EXCL_RSN_CD     = '   '
+  AND EXISTS
+      ( SELECT 1
+        FROM   &CLP.EVAL&CLP_TBL.EVAL
+        WHERE  CLP_ISA_FILE_ID   = TS3_ISA_FILE_ID
+          AND  CLP_GS_GRP_SEQ_NO = TS3_GS_GRP_SEQ_NO
+          AND  CLP_ST_SEQ_NO     = TS3_ST_SEQ_NO
+          AND  CLP_LX_SEQ_NO     = TS3_LX_SEQ_NO
+          AND  CLP_EXCL_RSN_CD   = '   ' )
+ORDER BY
+      TS3_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,TS3_LX_SEQ_NO
+     ,TS3_SEQ_NO
+;
+TABLEF FILE SQLOUT
+PRINT
+  COMPUTE C_REQ_TYPE/A4       = 'TS3*';
+  COMPUTE C_GS_SEQ_NO/I5      = TS3_GS_GRP_SEQ_NO;
+  COMPUTE C_ST_SEQ_NO/I7      = TS3_ST_SEQ_NO;
+  COMPUTE C_REC_SEQ_IND/A2    = '50';
+  COMPUTE C_LX_SEQ_NO/I4      = TS3_LX_SEQ_NO;
+  COMPUTE C_CLP_SEQ_NO/I6     = TS3_SEQ_NO;
+  COMPUTE C_REC_SEQ_CLM/A2    = '11';
+  COMPUTE C_SVC_SEQ_NO/I5     = 0;
+  COMPUTE C_SERV_SEQ_IND/A2   = '00';
+  COMPUTE C_SVC_CAS_SEQ_NO/I4 = 0;
+  COMPUTE C_EDIVAL/A600V = C_REQ_TYPE || TS3_REF_ID || '*' ||
+                          TS3_FACILITY_CD || '*' || TS3_DATE || '*' ||
+                          TS3_QTY01 || '*' || TS3_AMT01 || '*' ||
+                          TS3_AMT02 || '*' ||  TS3_AMT03 || '*' ||  TS3_AMT04 || '*' ||
+                          TS3_AMT05 || '*' ||  TS3_AMT06 || '*' ||
+                          TS3_AMT07 || '*' ||  TS3_AMT08 || '*' ||  TS3_AMT09 || '*' ||
+                          TS3_AMT10 || '*' ||  TS3_AMT11 || '*' ||
+                          TS3_AMT12 || '*' ||  TS3_AMT13 || '*' ||  TS3_AMT14 || '*' ||
+                          TS3_AMT15 || '*' ||  TS3_AMT16 || '*' ||  TS3_AMT17|| '*' ||
+                          TS3_AMT18 || '*' ||  TS3_QTY02 || '*' || TS3_AMT19; NOPRINT
+  COMPUTE C_RMVSPC/A600V = TRIMV('T', C_EDIVAL, 600, ' ', 1, C_RMVSPC); NOPRINT
+  COMPUTE C_EDIREC/A600V = TRIMV('T', C_RMVSPC, 600, '*', 1, C_EDIREC) | '~';
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS EDITEMP FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

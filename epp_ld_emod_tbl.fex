@@ -1,0 +1,145 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-*
+-******************************************************************************
+-*
+-* Tables Accessed:
+-*
+-* Tables Updated:
+-*
+-******************************************************************************
+-*
+-* Include/EX Files:
+-*
+-******************************************************************************
+-*
+-* Files Allocated:
+-*
+-******************************************************************************
+-*
+-* Change History:
+-*
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-DEFAULT &MODE       = 'PROD';
+-DEFAULT &APPNAME    = 'EPP';
+-DEFAULT &DEFAULTS   = 'EPP_DEFAULTS';
+-DEFAULT &DFOVERIDE  = 'NONE';
+-DEFAULT &FSTFEXNAME = '&FOCFEXNAME.EVAL';
+FILEDEF  EMOD_INPUT DISK C:\ibi\apps\epp2\emod_input.txt
+-RUN
+-******************************************************************************
+-IF  '&FOCFEXNAME.EVAL' NE '&FSTFEXNAME.EVAL' THEN GOTO STEP001;
+-*-----------------------------------------------------------------------------
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*-----------------------------------------------------------------------------
+-INCLUDE GBL_EXECUTION_SETUP
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &EMODS.EVAL&EMODS_TBL.EVAL
+-*-----------------------------------------------------------------------------
+-*TABLE FILE OTLT_INPUT
+-*PRINT *
+-*END
+-*-EXIT
+SQL
+TRUNCATE TABLE &EMODS.EVAL&EMODS_TBL.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+TABLE FILE EMOD_INPUT
+PRINT EMOD_MOD_CATG   AS EMOD_MOD_CATG
+      EMOD_FEX_NAME   AS EMOD_FEX_NAME
+      EMOD_MOD_DESC   AS EMOD_MOD_DESC
+BY    EMOD_MOD_ID     AS EMOD_MOD_ID
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE SET ASNAMES  ON
+ON TABLE HOLD AS HOLDEMOD FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Insert OTLT rows to &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+MODIFY FILE &EMODS_TBL.EVAL
+SQL SET LOADONLY
+MATCH EMOD_MOD_ID EMOD_MOD_CATG EMOD_FEX_NAME EMOD_MOD_DESC
+ON MATCH   REJECT
+ON NOMATCH INCLUDE
+FIXFORM FROM HOLDEMOD
+DATA ON HOLDEMOD
+-*LOG FORMAT ON LOGFMT MSG OFF
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-*-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

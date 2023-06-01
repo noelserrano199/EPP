@@ -1,0 +1,124 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-*
+-******************************************************************************
+-*
+-* Tables Accessed:
+-*
+-* Tables Updated:
+-*
+-******************************************************************************
+-*
+-* Include/EX Files:
+-*
+-******************************************************************************
+-*
+-* Files Allocated:
+-*
+-******************************************************************************
+-*
+-* Change History:
+-*
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-DEFAULT &FILE_CNTR  = 0;
+-RUN
+-******************************************************************************
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-*-----------------------------------------------------------------------------
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*-----------------------------------------------------------------------------
+-INCLUDE GBL_EXECUTION_SETUP
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+-*-SET &ECHO = ALL;
+SQL
+SELECT IFCT_FILE_NAME
+FROM &ISA.EVAL&ISA_TBL.EVAL
+INNER JOIN
+     &IFCT.EVAL&IFCT_TBL.EVAL
+ON   IFCT_FILE_ID = ISA_FILE_ID
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+-TYPE &LINES.EVAL
+-*-SET &RUN_DATE = '09/19/2013';
+-SET &TIME     = EDIT(HHMMSS('A8'),'99$:99$:99');
+-SET &TODY     = EDIT('&MDYY.EVAL','99/99/$$99');
+-*-SET &TODY     = '09/19/13';
+-****
+SET NODATA='N/A'
+SET PRINTPLUS = ON
+SET SPACES = 1
+SET PAGE = NOPAGE
+-****
+DEFINE FILE HOLD
+PAGE_HDR1/A44  = CTRFLD('UCLA Health System - Faculty Practice Group ', 44, 'A44');
+PAGE_HDR2/A44  = CTRFLD('EPP Claim Invoice Info                      ', 44, 'A44');
+PAGE_HDR3/A180 = CTRFLD(IFCT_FILE_NAME, 80, 'A80')||'    '|'Invoice: '|'&INVCNO.EVAL';
+END
+TABLEF FILE HOLD
+HEADING CENTER
+"________________________________________________________________________________________________________________________________________________________________________________________________"
+" "
+-*"                    <34 <PAGE_HDR1   <86 Run Date: <92 &TODY.EVAL"
+-*"                    <34 <PAGE_HDR2   <86 Run Time: <92 &TIME.EVAL"
+"                    <25 <PAGE_HDR3   "
+"________________________________________________________________________________________________________________________________________________________________________________________________"
+"  "
+PRINT IFCT_FILE_NAME NOPRINT
+ON TABLE SET ONLINE-FMT PDF
+ON TABLE PCHOLD FORMAT PDF
+ON TABLE SET ASNAMES   ON
+ON TABLE SET PAGE      NOPAGE
+ON TABLE SET HOLDLIST  PRINTONLY
+ON TABLE SET SPACES    1
+ON TABLE SET STYLE *
+     UNITS=IN,
+     PAGESIZE='Letter',
+     LEFTMARGIN=0.250,
+     RIGHTMARGIN=0.000,
+     TOPMARGIN=0.250,
+     BOTTOMMARGIN=.250,
+     SQUEEZE=OFF,
+     ORIENTATION=LANDSCAPE,
+     SIZE=8,
+     FONT=ARIAL,
+$
+TYPE=HEADING, STYLE=BOLD,    SIZE=9, COLOR=BLACK, $
+TYPE=HEADING, LINE=1,  STYLE=BOLD,     SIZE=9,  COLOR=GREEN,$
+TYPE=HEADING, LINE=4,  STYLE=BOLD,     SIZE=9,  COLOR=GREEN,$
+-*
+ENDSTYLE
+END
+ 
