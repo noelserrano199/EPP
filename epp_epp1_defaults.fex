@@ -1,0 +1,15 @@
+-******************************************************************************
+-*                  Epp Production Default Parameters
+-******************************************************************************
+-*-SET &ECHO=ALL;
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO THE_END;
+-RUN
+-SET &DFLTCNTL = 'X';
+-SET &EPP_VER  = 'EPP1';
+-INCLUDE EPP_COMMON_DEFAULTS
+-RUN
+-INCLUDE EPP_&EPP_VER.EVAL_TABLES.FEX
+-RUN
+-THE_END
+-SET &ECHO=OFF;
+-RUN
