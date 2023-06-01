@@ -1,0 +1,203 @@
+-******************************************************************************
+-* Program:      EPP_LD_IFCT_TBL
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files: GBL_DROP_TEMP_TBL GBL_ERRORS
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           01/04/2014  Revised Version
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP1/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL After 6 hours of INP status change status to ERR
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING
+(
+SELECT
+      IFCT_FILE_ID
+     ,IFCT_STS
+     ,(CURRENT_DATE-IFCT_STS_DT)*24
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_STS IN('INP')
+  AND (CURRENT_DATE-IFCT_STS_DT)*24 > 2
+) ST
+ON    ( UT.IFCT_FILE_ID = ST.IFCT_FILE_ID )
+WHEN MATCHED THEN
+UPDATE SET UT.IFCT_STS = 'ERR'
+;
+TABLEF FILE SQLOUT
+PRINT *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP005
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP005';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Check current ISA file not in INP status
+-*-----------------------------------------------------------------------------
+SQL
+SELECT ISA_FILE_ID
+      ,IFCT_STS
+FROM  &ISA.EVAL&ISA_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID  = ISA_FILE_ID
+  AND IFCT_STS      IN('OLD','HLD','ERR','RDO','BAD','SEL')
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-IF   &RECORDS.EVAL NE 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP010
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP010';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      IFCT_FILE_ID
+     ,IFCT_STS
+     ,IFCT_FILE_NAME
+FROM  &ISA.EVAL&ISA_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID  = ISA_FILE_ID
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS FROM_HOLD FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-IF   &RECORDS.EVAL EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP015
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP015';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      IFCT_FILE_ID
+     ,IFCT_STS
+     ,IFCT_FILE_NAME
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_STS         = 'INP'
+  AND IFCT_EPP_VERSION = '&EPP_VER.EVAL'
+		AND ROWNUM           = 1
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS FROM_HOLD FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &RECORDS.EVAL EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP030
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP030';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-READ FROM_HOLD &X.A11 &FILE_ID.I8. &FILE_STS.A3. &FILE_NM.A80.
+-RUN
+-IF   &IORETURN GT 1 GOTO ERRORS;
+-RUN
+-TYPE #########################################################################################
+-TYPE Previous file still has an active status
+-TYPE Previous file still has an active status
+-TYPE File Id: &FILE_ID.EVAL Status: &FILE_STS.EVAL Name: &FILE_NM.EVAL
+-TYPE File Id: &FILE_ID.EVAL Status: &FILE_STS.EVAL Name: &FILE_NM.EVAL
+-TYPE File Id: &FILE_ID.EVAL Status: &FILE_STS.EVAL Name: &FILE_NM.EVAL
+-TYPE File Id: &FILE_ID.EVAL Status: &FILE_STS.EVAL Name: &FILE_NM.EVAL
+-TYPE Previous file still has an active status
+-TYPE Previous file still has an active status
+-TYPE #########################################################################################
+-RUN
+-QUIT
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+ 

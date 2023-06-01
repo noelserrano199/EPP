@@ -1,0 +1,160 @@
+-******************************************************************************-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           08/09/2013  Changed WHERE TOTAL in STEP002 to WHERE
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &NA_PER.EVAL&NA_PER_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+DELETE FROM &NA_PER.EVAL&NA_PER_TBL.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Extract NA_PER records from 835 EDI file
+-*-----------------------------------------------------------------------------
+-TYPE &FILE_ID.EVAL
+-RUN
+DEFINE FILE EDI835_BY_RT
+FILE_ID/I8    = &FILE_ID.EVAL;
+GS_GRP_SEQ_NO/I5 WITH GS_FUNC_ID_CD       = GS_GRP_SEQ_NO + 1;
+ST_SEQ_NO/I7  WITH ST_TXN_SET_CNTL_NO     = IF GS_GRP_SEQ_NO          EQ LAST GS_GRP_SEQ_NO
+                                               THEN ST_SEQ_NO + 1
+                                            ELSE 1;
+N1_SEQ_NO/I4   WITH N1_ENTITY_ID_CD       = IF   FILE_ID              EQ LAST FILE_ID
+                                             AND GS_GRP_SEQ_NO        EQ LAST GS_GRP_SEQ_NO
+                                             AND ST_SEQ_NO            EQ LAST ST_SEQ_NO
+                                                 THEN N1_SEQ_NO + 1
+                                            ELSE 1;
+NA_PER_SEQ_NO/I2 WITH NA_PER_CONTACT_NAME = IF   FILE_ID              EQ LAST FILE_ID
+                                             AND GS_GRP_SEQ_NO        EQ LAST GS_GRP_SEQ_NO
+                                             AND ST_SEQ_NO            EQ LAST ST_SEQ_NO
+                                             AND N1_ENTITY_ID_CD      EQ LAST N1_ENTITY_ID_CD
+                                                 THEN NA_PER_SEQ_NO + 1
+                                            ELSE 1;
+END
+-*
+TABLE FILE EDI835_BY_RT
+PRINT NA_PER_CONTACT_FUNC_CD AS NA_PER_CONTACT_FUNC_CD
+      NA_PER_CONTACT_NAME    AS NA_PER_CONTACT_NAME
+      NA_PER_COM_NO_QLFR     AS NA_PER_COM_NO_QLFR
+      NA_PER_COM_NO          AS NA_PER_COM_NO
+      NA_PER_COM_NO_QLFR2    AS NA_PER_COM_NO_QLFR2
+      NA_PER_COM_NO2         AS NA_PER_COM_NO2
+      NA_PER_COM_NO_QLFR3    AS NA_PER_COM_NO_QLFR3
+      NA_PER_COM_NO3         AS NA_PER_COM_NO3
+      ISA_IC_DATE            NOPRINT
+BY    FILE_ID                AS NA_PER_ISA_FILE_ID
+BY    GS_GRP_SEQ_NO          AS NA_PER_GS_GRP_SEQ_NO
+BY    ST_SEQ_NO              AS NA_PER_ST_SEQ_NO
+BY    N1_ENTITY_ID_CD        AS NA_PER_N1_ENTITY_ID_CD
+BY    N1_SEQ_NO              AS NA_PER_N1_SEQ_NO
+BY    NA_PER_SEQ_NO          AS NA_PER_SEQ_NO
+WHERE NA_PER_CONTACT_NAME IS NOT MISSING;
+ON TABLE SET ALL ON
+ON TABLE SET ASNAMES ON
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS 835RECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Insert NA_PER rows to &NA_PER.EVAL&NA_PER_TBL.EVAL
+-*-----------------------------------------------------------------------------
+-*FILEDEF FMTRECS DISK \\PSSDEV3\WebFocusDrop\WORKDIR\format_errs.txt
+-*FILEDEF DUPRECS DISK \\PSSDEV3\WebFocusDrop\WORKDIR\dupl_errs.txt
+-*-RUN
+MODIFY FILE &NA_PER_TBL.EVAL
+SQL SET LOADONLY
+MATCH NA_PER_ISA_FILE_ID NA_PER_GS_GRP_SEQ_NO NA_PER_ST_SEQ_NO NA_PER_N1_ENTITY_ID_CD NA_PER_N1_SEQ_NO NA_PER_SEQ_NO
+ON MATCH   REJECT
+ON NOMATCH INCLUDE
+FIXFORM FROM 835RECS
+DATA ON 835RECS
+-*LOG FORMAT ON FMTRECS
+-*LOG DUPL   ON DUPRECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

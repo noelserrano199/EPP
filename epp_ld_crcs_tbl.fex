@@ -1,0 +1,231 @@
+-TYPE *************************************************************************-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-DEFAULT &INVCNO     = 'P1137074160';
+-*FILEDEF  READAFEX  DISK C:\ibi\apps\epp2\epp_a0_main_control_procedure.fex
+-*FILEDEF  READSTEPS DISK C:\ibi\apps\epp2\epp_a0_main_control_procedure.fex
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+DELETE FROM &CRCS.EVAL&CRCS_TBL.EVAL
+WHERE CRCS_IFCT_FILE_ID = &FILE_ID.EVAL
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP010
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP010';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      ST_ISA_FILE_ID
+     ,'ST'
+     ,ST_INCL_RSN_CD
+     ,ST_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &ST.EVAL&ST_TBL.EVAL
+GROUP BY
+      ST_ISA_FILE_ID
+     ,'ST'
+     ,ST_INCL_RSN_CD
+     ,ST_EXCL_RSN_CD
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP020
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP020';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      CLP_ISA_FILE_ID
+     ,'CLP'
+     ,CLP_INCL_RSN_CD
+     ,CLP_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &CLP.EVAL&CLP_TBL.EVAL
+GROUP BY
+      CLP_ISA_FILE_ID
+     ,'CLP'
+     ,CLP_INCL_RSN_CD
+     ,CLP_EXCL_RSN_CD
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP030
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP030';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      CLP_CAS_ISA_FILE_ID
+     ,'CLP_CAS'
+     ,CLP_CAS_INCL_RSN_CD
+     ,CLP_CAS_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &CLP_CAS.EVAL&CLP_CAS_TBL.EVAL
+GROUP BY
+      CLP_CAS_ISA_FILE_ID
+     ,'CLP'
+     ,CLP_CAS_INCL_RSN_CD
+     ,CLP_CAS_EXCL_RSN_CD
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP040
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP040';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      SVC_ISA_FILE_ID
+     ,'SVC'
+     ,SVC_INCL_RSN_CD
+     ,SVC_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &SVC.EVAL&SVC_TBL.EVAL
+GROUP BY
+      SVC_ISA_FILE_ID
+     ,'SVC'
+     ,SVC_INCL_RSN_CD
+     ,SVC_EXCL_RSN_CD
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP050
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP050';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      SVC_CAS_ISA_FILE_ID
+     ,'SVC_CAS'
+     ,SVC_CAS_INCL_RSN_CD
+     ,SVC_CAS_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+GROUP BY
+      SVC_CAS_ISA_FILE_ID
+     ,'SVC_CAS'
+     ,SVC_CAS_INCL_RSN_CD
+     ,SVC_CAS_EXCL_RSN_CD
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP060
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP060';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CRCS.EVAL&CRCS_TBL.EVAL
+SELECT
+      SVC_DTM_ISA_FILE_ID
+     ,'SVC_DTM'
+     ,SVC_DTM_INCL_RSN_CD
+     ,SVC_DTM_EXCL_RSN_CD
+     ,COUNT(*)
+FROM   &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL
+GROUP BY
+      SVC_DTM_ISA_FILE_ID
+     ,'SVC_DTM'
+     ,SVC_DTM_INCL_RSN_CD
+     ,SVC_DTM_EXCL_RSN_CD
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS2
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

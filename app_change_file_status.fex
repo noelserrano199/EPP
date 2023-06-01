@@ -1,0 +1,123 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Change File Status to Old
+-*-----------------------------------------------------------------------------
+-*SQL
+-*DELETE FROM &IFCT.EVAL&IFCT_TBL.EVAL
+-*WHERE RTRIM(IFCT_FILE_NAME) = 'UCLA20190816_BOA_POST_EDCA.835';
+-*END
+-*-EXIT
+SQL
+UPDATE &IFCT.EVAL&IFCT_TBL.EVAL
+SET   IFCT_STS    = 'RDO'
+-*     ,IFCT_STS_DT = TO_DATE('25-FEB-2021 15:41:00','DD-MON-YYYY HH24:MI:SS')
+-*     ,IFCT_NO_ROWS = 123518
+-*     ,IFCT_PAID_AMT_IN  =  -1347.25
+-*     ,IFCT_PAID_AMT_OUT =  -1347.25
+WHERE RTRIM(IFCT_FILE_NAME) = '20230107_BOA_POST_AETNA_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211115_BOA_POST_BOAMIXED_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211109_BOA_POST_TAPESTRY_ERA_P_1709.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211105_BOA_POST_BOAMIXED_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211105_BOA_POST_HEALTHNET_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211026_BOA_POST_CIGNA_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211025_BOA_POST_EDC_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211026_BOA_POST_UNITEDHEALTHCARE_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211025_BOA_POST_EDC_C001GE1.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211025_BOA_POST_EDC_C001TE1_COR.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211026_BOA_POST_BLUESHIELD_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20211026_BOA_POST_MEDICAL_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190131_BOA_POST_EDC_EPIC_Q03_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_HEALTHNET_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_HEALTHNET_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_MEDICAL_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_MEDICARE_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_MEDICARE_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_MEDICARE_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_UNITEDHEALTHCARE_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_UNITEDHEALTHCARE_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_UNITEDHEALTHCARE_ERA_EPIC_D.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_UNITEDHEALTHCARE_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_AARPUHC_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_AARPUHC_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_F.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_E.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_C.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_D.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_B.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20190201_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20180227_BOA_POST_ANTHEMBLUECROSS_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20180227_BOA_POST_AETNA_ERA_CRP_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20180227_BOA_POST_AETNA_ERA_EPIC_A.835'
+-*   OR RTRIM(IFCT_FILE_NAME) = '20180227_BOA_POST_AARPUHC_ERA_EPIC_A.835'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-*-----------------------------------------------------------------------

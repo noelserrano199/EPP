@@ -1,0 +1,163 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Write MIA 835 Transactions
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      'MIA' "MIA"
+     ,MIA_QTY01
+     ,MIA_AMT01
+     ,MIA_QTY02
+     ,MIA_AMT02
+     ,MIA_REF_ID01
+     ,MIA_AMT03
+     ,MIA_AMT04
+     ,MIA_AMT05
+     ,MIA_AMT06
+     ,MIA_AMT07
+     ,MIA_AMT08
+     ,MIA_AMT09
+     ,MIA_AMT10
+     ,MIA_AMT11
+     ,MIA_QTY03
+     ,MIA_AMT12
+     ,MIA_AMT13
+     ,MIA_AMT14
+     ,MIA_AMT15
+     ,MIA_REF_ID02
+     ,MIA_REF_ID03
+     ,MIA_REF_ID04
+     ,MIA_REF_ID05
+     ,CASE WHEN MIA_AMT16 IS NULL
+                THEN ' '
+           WHEN MIA_AMT16 = '.'
+                THEN ' '
+           ELSE MIA_AMT16  END     AS MIA_AMT16
+     ,MIA_GS_GRP_SEQ_NO
+     ,MIA_ST_SEQ_NO
+     ,MIA_LX_SEQ_NO
+     ,MIA_CLP_CLM_SEQ_NO
+     ,MIA_SEQ_NO
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD        = '   '
+INNER JOIN
+      &MIA.EVAL&MIA_TBL.EVAL
+ON    MIA_ISA_FILE_ID        = CLP_ISA_FILE_ID
+  AND MIA_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+  AND MIA_ST_SEQ_NO          = CLP_ST_SEQ_NO
+  AND MIA_LX_SEQ_NO          = CLP_LX_SEQ_NO
+  AND MIA_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+  AND MIA_EXCL_RSN_CD        = '   '
+WHERE ST_EXCL_RSN_CD         = '   '
+ORDER BY
+      MIA_GS_GRP_SEQ_NO
+     ,MIA_ST_SEQ_NO
+     ,MIA_LX_SEQ_NO
+     ,MIA_CLP_CLM_SEQ_NO
+     ,MIA_SEQ_NO
+;
+TABLE FILE SQLOUT
+PRINT
+  COMPUTE C_REQ_TYPE/A4       = 'MIA*';
+  COMPUTE C_GS_SEQ_NO/I5      = MIA_GS_GRP_SEQ_NO;
+  COMPUTE C_ST_SEQ_NO/I7      = MIA_ST_SEQ_NO;
+  COMPUTE C_REC_SEQ_IND/A2    = '50';
+  COMPUTE C_LX_SEQ_NO/I4      = MIA_LX_SEQ_NO;
+  COMPUTE C_CLP_SEQ_NO/I6     = MIA_CLP_CLM_SEQ_NO;
+  COMPUTE C_REC_SEQ_CLM/A2    = '21';
+  COMPUTE C_SVC_SEQ_NO/I5     = MIA_SEQ_NO;
+  COMPUTE C_SERV_SEQ_IND/A2   = '00';
+  COMPUTE C_SVC_CAS_SEQ_NO/I4 = 0;
+  COMPUTE C_MIA_AMT16/A18     = IF  MIA_AMT16 IS MISSING
+                                    THEN ' '
+                           ELSE IF  MIA_AMT16 EQ '.'
+                                    THEN ' '
+                           ELSE MIA_AMT16; NOPRINT
+  COMPUTE C_EDIVAL/A600V = C_REQ_TYPE || MIA_QTY01 || '*' || MIA_AMT01 || '*' ||
+                           MIA_QTY02 || '*' || MIA_AMT02 || '*' || MIA_REF_ID01
+                 || '*' || MIA_AMT03 || '*' || MIA_AMT04 || '*' || MIA_AMT05
+                 || '*' || MIA_AMT06 || '*' || MIA_AMT07 || '*' || MIA_AMT08
+                 || '*' || MIA_AMT09 || '*' || MIA_AMT10 || '*' || MIA_AMT11
+                 || '*' || MIA_QTY03 || '*' || MIA_AMT12 || '*' || MIA_AMT13
+                 || '*' || MIA_AMT14 || '*' || MIA_AMT15 || '*' ||
+               MIA_REF_ID02 || '*' || MIA_REF_ID03 || '*' ||
+               MIA_REF_ID04 || '*' || C_MIA_AMT16; NOPRINT
+  COMPUTE C_RMVSPC/A600V = TRIMV('T', C_EDIVAL, 600, ' ', 1, C_RMVSPC); NOPRINT
+  COMPUTE C_EDIREC/A600V = TRIMV('T', C_RMVSPC, 600, '*', 1, C_EDIREC) | '~';
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS EDITEMP FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS2
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

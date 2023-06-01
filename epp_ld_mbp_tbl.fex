@@ -1,0 +1,156 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-*
+-******************************************************************************
+-*
+-* Tables Accessed:
+-*
+-* Tables Updated:
+-*
+-******************************************************************************
+-*
+-* Include/EX Files:
+-*
+-******************************************************************************
+-*
+-* Files Allocated:
+-*
+-******************************************************************************
+-*
+-* Change History:
+-*
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-DEFAULT &MODE       = 'PROD';
+-DEFAULT &APPNAME    = 'EPP';
+-DEFAULT &DEFAULTS   = 'EPP_DEFAULTS';
+-DEFAULT &DFOVERIDE  = 'NONE';
+-DEFAULT &FSTFEXNAME = '&FOCFEXNAME.EVAL';
+-*FILEDEF  ERABAL2 DISK C:\ibi\apps\epp\holdbas.txt
+-RUN
+-******************************************************************************
+-IF  '&FOCFEXNAME.EVAL' NE '&FSTFEXNAME.EVAL' THEN GOTO STEP001;
+-*-----------------------------------------------------------------------------
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*-----------------------------------------------------------------------------
+-INCLUDE GBL_EXECUTION_SETUP
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+FILEDEF MBPINPUT  DISK C:\ibi\apps\epp2\ectinput1.txt
+-*FILEDEF ECTOUTPUT DISK C:\ibi\apps\epp2\ectinput.txt
+-RUN
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+-*SQL
+-*DROP TABLE TEMP_MBP_INPUT;
+-*COMMIT WORK;
+-*END
+-*-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+TABLEF FILE MBPINPUT
+PRINT PAYOR   AS PAYOR
+BY    FEXNAME AS FEXMAME
+ON TABLE SET ASNAMES ON
+ON TABLE HOLD AS TEMP_MBP_INPUT FORMAT SQLORA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+TRUNCATE TABLE &MBP.EVAL&MBP_TBL.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Insert OTLT rows to &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &MBP.EVAL&MBP_TBL.EVAL
+SELECT RTRIM(FEXNAME)
+      ,RTRIM(PAYOR)
+FROM   TEMP_MBP_INPUT
+ORDER BY 1
+;
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-*-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

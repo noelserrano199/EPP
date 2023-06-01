@@ -1,0 +1,190 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-*
+-DEFAULT &APPNAME    = 'EPP2_STAGE';
+-**
+-**
+-**
+-RUN
+-******************************************************************************
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-*-----------------------------------------------------------------------------
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*-----------------------------------------------------------------------------
+-DEFAULT &INVCNO     = 'P1072401970';
+-RUN
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      CAST( RANK() OVER
+          ( PARTITION BY RTRIM(CLP_CLM_SUBMTR_ID)
+            ORDER BY     RTRIM(CLP_CLM_SUBMTR_ID)
+                        ,CLP_CLM_STATUS_CD
+                        ,CLP_GS_GRP_SEQ_NO
+                        ,CLP_ST_SEQ_NO
+                        ,CLP_LX_SEQ_NO
+                        ,CLP_CLM_SEQ_NO ) AS INTEGER )
+                                  AS INVC_OCCURANCE
+     ,SVC_PROC1_CD
+     ,SVC_CAS_CLM_ADJ_GRP_CD1
+     ,SVC_CAS_CLM_ADJ_RSN_CD1
+     ,SVC_CAS_CLM_ADJ_AMT1
+     ,SVC_CAS_CLM_ADJ_RSN_CD2
+     ,SVC_CAS_CLM_ADJ_AMT2
+     ,SVC_CAS_CLM_ADJ_RSN_CD3
+     ,SVC_CAS_CLM_ADJ_AMT3
+     ,SVC_CAS_CLM_ADJ_RSN_CD4
+     ,SVC_CAS_CLM_ADJ_AMT4
+     ,SVC_CAS_CLM_ADJ_RSN_CD5
+     ,SVC_CAS_CLM_ADJ_AMT5
+     ,SVC_CAS_CLM_ADJ_RSN_CD6
+     ,SVC_CAS_CLM_ADJ_AMT6
+	 ,SVC_CAS_INCL_RSN_CD
+     ,SVC_CAS_EXCL_RSN_CD
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID          = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO        = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO            = ST_SEQ_NO
+  AND CLP_INCL_RSN_CD          = 'ORG'
+  AND RTRIM(CLP_CLM_SUBMTR_ID) = '&INVCNO.EVAL'
+LEFT OUTER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID          = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO        = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO            = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO            = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO       = CLP_CLM_SEQ_NO
+  AND SVC_INCL_RSN_CD          = 'ORG'
+-*  AND SVC_EXCL_RSN_CD          = 'OS6'
+LEFT OUTER JOIN
+      &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+ON    SVC_CAS_ISA_FILE_ID      = SVC_ISA_FILE_ID
+  AND SVC_CAS_GS_GRP_SEQ_NO    = SVC_GS_GRP_SEQ_NO
+  AND SVC_CAS_ST_SEQ_NO        = SVC_ST_SEQ_NO
+  AND SVC_CAS_LX_SEQ_NO        = SVC_LX_SEQ_NO
+  AND SVC_CAS_CLP_CLM_SEQ_NO   = SVC_CLP_CLM_SEQ_NO
+  AND SVC_CAS_SVC_SEQ_NO       = SVC_SEQ_NO
+  AND SVC_CAS_INCL_RSN_CD      = 'ORG'
+ORDER BY 1,2,4
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS HOLD02
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+TABLE FILE HOLD02
+PRINT INVC_OCCURANCE            AS 'Inv,Seq'
+      SVC_PROC1_CD              AS 'CPT,Code'
+      SVC_CAS_CLM_ADJ_GRP_CD1   AS 'Group,Code'
+      SVC_CAS_CLM_ADJ_RSN_CD1   AS 'Rsn,Cd'
+      SVC_CAS_CLM_ADJ_AMT1      AS 'Amt'
+      SVC_CAS_CLM_ADJ_RSN_CD2   AS 'Rsn,Cd'
+      SVC_CAS_CLM_ADJ_AMT2      AS 'Amt'
+      SVC_CAS_CLM_ADJ_RSN_CD3   AS 'Rsn,Cd'
+      SVC_CAS_CLM_ADJ_AMT3      AS 'Amt'
+	  SVC_CAS_INCL_RSN_CD       AS 'Incl,Cd'
+      SVC_CAS_EXCL_RSN_CD       AS 'Excl,Cd'
+ON TABLE SET ONLINE-FMT HTML
+ON TABLE SET HTMLCSS  ON
+ON TABLE SET ASNAMES  ON
+ON TABLE SET PAGE     NOPAGE
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE SET SPACES   1
+ON TABLE SET STYLE *
+     UNITS=IN,
+     PAGESIZE='Letter',
+     SQUEEZE=ON,
+     ORIENTATION=LANDSCAPE,
+     SIZE=7,
+     FONT=ARIAL,
+     GRID=OFF, $
+TYPE=TITLE, STYLE=BOLD, SIZE=8, JUSTIFY=CENTER, $
+-*
+TYPE=REPORT, COLUMN=CLP_CLM_STATUS_CD,    JUSTIFY=CENTER, $
+TYPE=REPORT, COLUMN=SVC_CLARITY_TX_ID,    JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=CLP_TOT_CLM_CRG_AMT,  JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=CLP_CLM_PYMT_AMT,     JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=SVC_UNTS_SVC_PD_CNT,  JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=SVC_ORGLI_PRVDR_PYMT, JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=SVC_LI_PRVDR_PYMT,    JUSTIFY=RIGHT,  $
+TYPE=REPORT, COLUMN=SVC_TX_ID_MATCH_TYPE, JUSTIFY=CENTER, $
+TYPE=REPORT, COLUMN=SVC_INCL_RSN_CD,      JUSTIFY=CENTER, $
+-*
+ENDSTYLE
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

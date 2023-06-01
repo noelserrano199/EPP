@@ -1,0 +1,200 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-*
+-DEFAULT &APPNAME    = 'EPP2_STAGE';
+-**
+-**
+-**
+-DEFAULT &INVCNO     = 'P1233512740'
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP3/EPP_DEFAULTS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      A.INVOICE_NUMBER
+     ,A.TX_ID
+     ,A.DETAIL_TYPE
+     ,TO_CHAR(D.POST_DATE, 'MM/DD/YYYY')         AS POST_DATE
+     ,TO_CHAR(A.ORIG_SERVICE_DATE, 'MM/DD/YYYY') AS ORIG_SERVICE_DATE
+     ,CAST(D.PROCEDURE_QUANTITY AS INTEGER)      AS PROCEDURE_QUANTITY
+     ,A.CPT_CODE
+     ,COALESCE(A.MODIFIER_ONE,'  ')||' '||
+      COALESCE(A.MODIFIER_TWO,'  ')||' '||
+      COALESCE(A.MODIFIER_THREE,'  ')||' '||
+      COALESCE(A.MODIFIER_FOUR,'  ')             AS MODS
+     ,A.PROC_ID
+     ,A.PROC_ALT_IDFR
+     ,A.BILL_CLAIM_AMOUNT
+     ,A.ORIG_PRICE
+     ,A.ORIG_AMT
+     ,A.CUR_PAYOR_ID
+     ,A.CUR_FIN_CLASS
+     ,A.ORIGINAL_PAYOR_ID
+     ,A.ORIGINAL_FIN_CLASS
+     ,A.INT_PAT_ID
+     ,D.OUTSTANDING_AMT
+     ,D.INSURANCE_AMT
+     ,TO_CHAR(D.LAST_ACTION_DATE, 'MM/DD/YYYY') AS LAST_ACTION_DATE
+     ,D.VOID_DATE
+     ,C.INSURANCE_AMOUNT
+     ,C.PATIENT_AMOUNT
+     ,TO_CHAR(C.POST_DATE, 'MM/DD/YYYY')        AS PMT_DATE
+     ,E.INVOICE_NUM
+     ,F.EOB_CODES
+     ,F.AMOUNT
+     ,COALESCE(F.PEOB_EOB_AMOUNT, 0)            AS PEOB_EOB_AMOUNT
+FROM  CLARITY_TDL_TRAN   A
+INNER JOIN
+      CLARITY_TDL_TRAN   B
+ON    B.TX_ID = A.TX_ID
+  AND B.DETAIL_TYPE = 1
+LEFT OUTER JOIN
+      CLARITY_TDL_TRAN   C
+ON    C.TX_ID = A.TX_ID
+  AND C.DETAIL_TYPE = 20
+INNER JOIN
+      ARPB_TRANSACTIONS  D
+ON    D.TX_ID = A.TX_ID
+LEFT OUTER JOIN
+      PMT_EOB_INFO_I     E
+ON    E.TX_ID             = C.MATCH_TRX_ID
+  AND E.TDL_ID            = C.TDL_ID
+LEFT OUTER JOIN
+      PMT_EOB_INFO_II    F
+ON    F.TX_ID             = E.TX_ID
+  AND F.EOB_I_LINE_NUMBER = E.LINE
+  AND COALESCE(F.PEOB_EOB_AMOUNT, 0) <> 0
+WHERE A.INVOICE_NUMBER = '&INVCNO.EVAL'
+  AND A.DETAIL_TYPE    = 50
+ORDER BY A.TX_ID
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+TABLE FILE HOLD
+PRINT ORIG_SERVICE_DATE    AS 'Date of,Service'
+      CPT_CODE             AS 'CPT,Code'
+      MODS                 AS 'M1 M2 M3 M4'
+      PROCEDURE_QUANTITY   AS 'Qty'
+      ORIG_PRICE           AS 'Orig,Price'
+      ORIG_AMT             AS 'Orig,Amount'
+      BILL_CLAIM_AMOUNT    AS 'Bill_Clm,Amount'
+      OUTSTANDING_AMT      AS 'Current,Balance'
+      INSURANCE_AMT        AS 'Insurance,Balance'
+      POST_DATE            AS 'Post,Date'
+      INSURANCE_AMOUNT     AS 'Prev Ins,Payment'
+      PATIENT_AMOUNT       AS 'Prev PT,Payment'
+      PMT_DATE             AS 'Pmt,Date'
+      INVOICE_NUM          AS 'Invoice,Number'
+      EOB_CODES            AS 'EOB,Code'
+      AMOUNT               AS 'EOB,Amount'
+      PEOB_EOB_AMOUNT      AS 'PEOB,Amount'
+      PROC_ID              AS 'Proc Id'
+      PROC_ALT_IDFR        AS 'Alt,Proc Id'
+      LAST_ACTION_DATE     AS 'Last Action,Date'
+      VOID_DATE            AS 'Void,Date'
+BY    TX_ID                AS 'Tx Id'
+WHERE TX_ID            NE LAST TX_ID
+   OR INSURANCE_AMOUNT NE 0
+   OR PATIENT_AMOUNT   NE 0
+   OR PEOB_EOB_AMOUNT  NE 0
+ON TABLE SET ONLINE-FMT HTML
+ON TABLE SET HTMLCSS  ON
+ON TABLE SET ASNAMES  ON
+ON TABLE SET PAGE     NOPAGE
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE SET SPACES   1
+ON TABLE SET STYLE *
+     UNITS=IN,
+     PAGESIZE='Letter',
+     SQUEEZE=ON,
+     ORIENTATION=LANDSCAPE,
+     SIZE=8,
+     FONT=ARIAL,
+     GRID=OFF, $
+TYPE=TITLE, STYLE=BOLD, SIZE=8, JUSTIFY=CENTER, $
+TYPE=REPORT, COLUMN=DIV_SUB_DIV,        SQUEEZE=2.00, $
+ENDSTYLE
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

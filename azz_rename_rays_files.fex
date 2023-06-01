@@ -1,0 +1,176 @@
+-******************************************************************************
+-* Program:      EPP_LD_IFCT_TBL
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files: GBL_DROP_TEMP_TBL GBL_ERRORS
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           01/04/2014  Revised Version
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Read directory and locate input files
+-*-----------------------------------------------------------------------------
+FILEDEF FNAMES DISK \\VOPWFRS2\WebFocusDrop$\LOG\FNAMES.FTM
+-RUN
+SQL
+SELECT IFCT_FILE_ID
+FROM &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE ROWNUM < 1;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS FNAMES
+END
+-RUN
+FILEDEF FNAMES CLEAR
+-RUN
+-SET &INPDIR = '\\aopnasvmlb03\ccProdDropBox$\fpg_era\prd\from_cc\Test_Files\ZIP TODAY';
+-SET &FILE_ACTION_DATETIME   = '&YYMD.EVAL'|' '|EDIT('&NOWTIME.EVAL', '99$:99999');
+APP MAP INPDIR
+-RUN
+APP MAP INPDIR '&INPDIR.EVAL'
+-RUN
+APP QUERY INPDIR HOLD
+-RUN
+DEFINE FILE FOCAPPQ
+OLD_NM1/A100    = GETTOK(FILENAME, 120, 1, '.',100,OLD_NM1);
+-*OLD_NM2/A008    = GETTOK(FILENAME, 120, 2, '.',8,OLD_NM2);
+FILE_EXT/A03    = GETTOK(FILENAME, 120, 2, '.', 3,FILE_EXT);
+-*OLD_NM/A116     = OLD_NM1||'.'||OLD_NM2||'.'||FILE_EXT;
+OLD_NM/A116     = OLD_NM1||'.'||FILE_EXT;
+FILE_NM/A15     = GETTOK(FILENAME, 120, 1, '_wcedi',15,FILE_NM);
+INCL_I/I3       = POSIT(FILENAME, 120,'_wcedi', 3, 'I3');
+END
+-*DEFINE FILE FOCAPPQ
+-*OLD_NM1/A100    = GETTOK(FILENAME, 120, 1, '.',100,OLD_NM1);
+-*OLD_NM2/A008    = GETTOK(FILENAME, 120, 2, '.',8,OLD_NM2);
+-*OLD_NM/A116     = OLD_NM1;
+-*FILE_EXT/A03    = GETTOK(FILENAME, 120, 3, '.', 3,FILE_EXT);
+-*FILE_NM/A15     = GETTOK(FILENAME, 120, 1, '.pdf',15,FILE_NM);
+-*INCL_I/I3       = POSIT(FILENAME, 120,'_wcedi', 3, 'I3');
+-*END
+-*
+TABLE FILE FOCAPPQ
+PRINT
+COMPUTE XCNT/I1 = IF FILE_NM NE LAST FILE_NM THEN 1 ELSE XCNT+1; NOPRINT
+COMPUTE YCNT/A2 = IF XCNT EQ 1 THEN '  ' ELSE '_'||EDIT(XCNT); NOPRINT
+COMPUTE NEW_NM/A17 = FILE_NM||YCNT;
+BY   OLD_NM
+WHERE FILE_EXT EQ 'pdf';
+WHERE INCL_I   NE 0;
+WHERE FILE_NM  NE ' ';
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS FROM_HOLD FORMAT ALPHA
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &RECORDS.EVAL EQ 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Get MAX IFCT_FILE_ID
+-*-----------------------------------------------------------------------------
+-SET &ECHO=ALL;
+FILEDEF FNAMES DISK \\VOPWFRS2\WebFocusDrop$\LOG\FNAMES.FTM (APPEND
+-RUN
+-LOOP
+-READ FROM_HOLD &OLD_NM.A115. &XX.A1. &NEW_NM.A16.
+-IF &IORETURN NE 0 THEN GOTO END_LOOP;
+-TYPE &OLD_NM.EVAL &NEW_NM.EVAL
+APP RENAMEF INPDIR &OLD_NM.EVAL &NEW_NM.EVAL ' '
+-TYPE FOCERRNUM &FOCERRNUM.EVAL
+-TYPE RETCODE   &RETCODE.EVAL
+-IF &FOCERRNUM.EVAL EQ 0 THEN GOTO WRITREC;
+-IF &RETCODE EQ 0 THEN GOTO WRITREC;
+-WRITE FNAMES &OLDNAM.EVAL ERROR
+-GOTO LOOP;
+-WRITREC
+-WRITE FNAMES &OLD_NM.EVAL&NEW_NM.EVAL
+-GOTO LOOP;
+-END_LOOP
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Add new files to &IFCT.EVAL&IFCT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+TABLE FILE FNAMES
+PRINT OLD_NAME
+      NEW_NAME
+ON TABLE SET PAGE NOPAGE
+ON TABLE PCHOLD FORMAT HTML
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

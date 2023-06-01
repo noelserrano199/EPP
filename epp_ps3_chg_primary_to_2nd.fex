@@ -1,0 +1,201 @@
+-TYPE *************************************************************************-TYPE *                      &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-******************************************************************************
+-* Program: epp_claim_level_pmt_cl1
+-* Author:  Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-* Issues - Matching Logic is not perfect-cannot be certain
+-*        - Clarity DB is a day old
+-*        - Possiblity multiple payments for same charge in same file
+-*        - Possibility of other payments for same charge in other files processed the same day
+-*        - Perhaps we should not post wo balance if payment is a duplicate amount of previous payment
+-*        - The medicare payment could have been recersed
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-TYPE *************************************************************************
+-*-TYPE Only Medi-Cal Files
+-TYPE *************************************************************************
+-*-IF  '&PAYER.EVAL' NE 'MEDICAL' THEN GOTO THE_END;
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &CLP.EVAL&CLP_TBL.EVAL UT
+USING (
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      CLP_ISA_FILE_ID
+     ,CLP_GS_GRP_SEQ_NO
+     ,CLP_ST_SEQ_NO
+     ,CLP_LX_SEQ_NO
+     ,CLP_CLM_SEQ_NO
+     ,CLP_EPP_GEN_SEQ
+     ,CLP_CLM_SUBMTR_ID
+     ,CLP_CLM_STATUS_CD
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID              = ST_ISA_FILE_ID
+  AND RTRIM(IFCT_FILE_PAYER)    IN('EDC','BOAMIXED')
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL C1
+ON    CLP_ISA_FILE_ID           = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO         = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO             = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD           = '   '
+  AND RTRIM(CLP_CLM_STATUS_CD)  = '1'
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL S1
+ON    SVC_ISA_FILE_ID           = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO         = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO             = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO             = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO        = CLP_CLM_SEQ_NO
+  AND RTRIM(SVC_CLARITY_TX_ID) <> '0'
+  AND SVC_EXCL_RSN_CD           = '   '
+INNER JOIN
+      ARPB_TRANSACTIONS  A
+ON    A.TX_ID                   = TO_NUMBER(SVC_CLARITY_TX_ID)
+  AND A.TX_TYPE_C               = 1
+  AND A.AMOUNT                 <> A.OUTSTANDING_AMT
+  AND A.TOTAL_MTCH_INS_AMT     <> 0
+  AND A.OUTSTANDING_AMT         > 0
+WHERE ST_EXCL_RSN_CD            = '   '
+  AND NOT EXISTS
+    ( SELECT 1
+      FROM  &CLP.EVAL&CLP_TBL.EVAL C2
+      WHERE SUBSTR(RTRIM(C2.CLP_CLM_SUBMTR_ID),1,10) = SUBSTR(RTRIM(C1.CLP_CLM_SUBMTR_ID),1,10)
+        AND RTRIM(C2.CLP_CLM_STATUS_CD)              = '22' )
+ORDER BY 1,2,3,4,5,6
+) ST
+ON  (    ST.CLP_ISA_FILE_ID    = UT.CLP_ISA_FILE_ID
+     AND ST.CLP_GS_GRP_SEQ_NO  = UT.CLP_GS_GRP_SEQ_NO
+     AND ST.CLP_ST_SEQ_NO      = UT.CLP_ST_SEQ_NO
+     AND ST.CLP_LX_SEQ_NO      = UT.CLP_LX_SEQ_NO
+     AND ST.CLP_CLM_SEQ_NO     = UT.CLP_CLM_SEQ_NO
+     AND ST.CLP_EPP_GEN_SEQ    = UT.CLP_EPP_GEN_SEQ  )
+WHEN MATCHED THEN
+UPDATE SET
+         UT.CLP_EXCL_RSN_CD    = 'PS3'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-TYPE &NOWTIME.EVAL &STEP.EVAL -
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &CLP.EVAL&CLP_TBL.EVAL
+SELECT
+      CLP_ISA_FILE_ID
+     ,CLP_GS_GRP_SEQ_NO
+     ,CLP_ST_SEQ_NO
+     ,CLP_LX_SEQ_NO
+     ,CLP_CLM_SEQ_NO
+     ,CLP_EPP_GEN_SEQ+1     AS CLP_EPP_GEN_SEQ
+     ,CLP_CLM_SUBMTR_ID
+     ,'2'                   AS CLP_CLM_STATUS_CD
+     ,CLP_TOT_CLM_CRG_AMT
+     ,CLP_CLM_PYMT_AMT
+     ,CLP_PT_RESP_AMT
+     ,CLP_CLM_FIL_ID_CD
+     ,CLP_PYR_CLM_CNTL_NO
+     ,CLP_FCLTY_CD_VALU
+     ,CLP_CLM_FREQ_TYP_CD
+     ,CLP_PT_STS_CD
+     ,CLP_DRG_CD
+     ,CLP_QTY
+     ,CLP_PCT
+     ,CLP_YN_COND_RESP_CD
+     ,CLP_CL_TX_MATCH_TYPE
+     ,CLP_RVSD_INVC_NO
+     ,CLP_INVC_FIN_CLASS
+     ,CLP_INVC_CRG_COUNT
+     ,CLP_MATCHED_CRG_CNT
+     ,CLP_ORIG_PRICE
+     ,CLP_CURRENT_BALANCE
+     ,CLP_MULTI_USE_AMOUNT
+     ,CLP_IS_TAKEBACK_YN
+     ,'PS3'                  AS CLP_INCL_RSN_CD
+     ,'   '                  AS CLP_EXCL_RSN_CD
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO      = ST_SEQ_NO
+  AND CLP_EXCL_RSN_CD    = 'PS3'
+WHERE ST_EXCL_RSN_CD     = '   '
+ORDER BY 1,2,3,4,5,6
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

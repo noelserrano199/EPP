@@ -1,0 +1,155 @@
+-******************************************************************************-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           08/09/2013  Changed WHERE TOTAL in STEP002 to WHERE
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &PLB.EVAL&PLB_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+DELETE FROM &PLB.EVAL&PLB_TBL.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Extract PLB records from 835 EDI file
+-*-----------------------------------------------------------------------------
+DEFINE FILE EDI835_BY_RT
+FILE_ID/I10                              = &FILE_ID.EVAL;
+GS_GRP_SEQ_NO/I5 WITH GS_FUNC_ID_CD      = GS_GRP_SEQ_NO + 1;
+ST_SEQ_NO/I7  WITH ST_TXN_SET_CNTL_NO    = IF GS_GRP_SEQ_NO        EQ LAST GS_GRP_SEQ_NO
+                                              THEN ST_SEQ_NO + 1
+                                           ELSE 1;
+PLB_SEQ_NO/I5   WITH PLB_PRVDR_ID        = IF   GS_GRP_SEQ_NO      EQ LAST GS_GRP_SEQ_NO
+                                            AND ST_SEQ_NO          EQ LAST ST_SEQ_NO
+                                                THEN PLB_SEQ_NO + 1
+                                           ELSE 1;
+L6_POSIT/I2 = POSIT(PLB_PRVDR_ADJ_AMT1, 18, 'L6', 2, 'I2');
+PLB_PRVDR_ADJ_AMT1/A18 = IF L6_POSIT EQ 0
+                            THEN PLB_PRVDR_ADJ_AMT1
+                         ELSE SUBSTR(18,PLB_PRVDR_ADJ_AMT1,1,L6_POSIT,L6_POSIT-1,'A18');
+END
+-*
+TABLE FILE EDI835_BY_RT
+PRINT PLB_PRVDR_ID         AS PLB_PRVDR_ID
+      PLB_DATE             AS PLB_DATE
+      PLB_ADJ_ID1          AS PLB_ADJ_ID1
+      PLB_PRVDR_ADJ_AMT1   AS PLB_PRVDR_ADJ_AMT1
+      PLB_ADJ_ID2          AS PLB_ADJ_ID2
+      PLB_PRVDR_ADJ_AMT2   AS PLB_PRVDR_ADJ_AMT2
+      PLB_ADJ_ID3          AS PLB_ADJ_ID3
+      PLB_PRVDR_ADJ_AMT3   AS PLB_PRVDR_ADJ_AMT3
+      PLB_ADJ_ID4          AS PLB_ADJ_ID4
+      PLB_PRVDR_ADJ_AMT4   AS PLB_PRVDR_ADJ_AMT4
+      PLB_ADJ_ID5          AS PLB_ADJ_ID5
+      PLB_PRVDR_ADJ_AMT5   AS PLB_PRVDR_ADJ_AMT5
+      PLB_ADJ_ID6          AS PLB_ADJ_ID6
+      PLB_PRVDR_ADJ_AMT6   AS PLB_PRVDR_ADJ_AMT6
+      ISA_IC_DATE          NOPRINT
+BY    FILE_ID              AS PLB_ISA_FILE_ID
+BY    GS_GRP_SEQ_NO        AS PLB_GS_GRP_SEQ_NO
+BY    ST_SEQ_NO            AS PLB_ST_SEQ_NO
+BY    PLB_SEQ_NO           AS PLB_SEQ_NO
+WHERE PLB_PRVDR_ID IS NOT MISSING;
+ON TABLE SET ALL ON
+ON TABLE SET ASNAMES ON
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS 835RECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Insert PLB rows to &PLB.EVAL&PLB_TBL.EVAL
+-*-----------------------------------------------------------------------------
+MODIFY FILE &PLB_TBL.EVAL
+SQL SET LOADONLY
+MATCH PLB_ISA_FILE_ID PLB_GS_GRP_SEQ_NO PLB_ST_SEQ_NO PLB_SEQ_NO
+ON MATCH   REJECT
+ON NOMATCH INCLUDE
+FIXFORM FROM 835RECS
+DATA ON 835RECS
+LOG FORMAT ON LOGFMT MSG OFF
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

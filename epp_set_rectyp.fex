@@ -1,0 +1,240 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Count records by segment type
+-*-----------------------------------------------------------------------------
+-RUN
+-SET &FILE_TXN_DATETIME   = '&YYMD.EVAL'|' '|EDIT('&NOWTIME.EVAL', '99$:99999');
+-RUN
+TABLEF FILE EDI835_W_CR_LF
+PRINT SEG_TYPE
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS&RECORDS.EVAL LINES&LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Update number of rows in IFCT table
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &IFCT.EVAL&IFCT_TBL.EVAL UT
+USING (
+SELECT IFCT_FILE_ID
+FROM  &IFCT.EVAL&IFCT_TBL.EVAL
+WHERE IFCT_FILE_ID  = &FILE_ID.EVAL
+  AND IFCT_STS      = 'INP'
+) ST
+ON    ( UT.IFCT_FILE_ID = ST.IFCT_FILE_ID )
+WHEN MATCHED THEN UPDATE
+SET   UT.IFCT_NO_ROWS = &RECORDS.EVAL;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Set record type on each row of 835 EDI file
+-*-----------------------------------------------------------------------------
+DEFINE FILE EDI835_W_CR_LF
+DATAREC1/A862 = STRREP (862, DATAREC,  1, '*',  1, '~',   862, DATAREC1);
+FIELD00/A04   = GETTOK(DATAREC1, 862,  1, '~',  4, FIELD00);
+FIELD01/A55   = GETTOK(DATAREC1, 862,  2, '~', 55, FIELD01);
+CLP_OR_SVC/A1 = IF FIELD00 EQ 'CLP'
+                   THEN 'C'
+           ELSE IF FIELD00 EQ 'SVC'
+                   THEN 'S';
+PER_SW/A3     = IF FIELD00 EQ 'N1'  THEN 'N1'
+                ELSE
+                IF FIELD00 EQ 'CLP' THEN 'CLP'
+                ELSE PER_SW;
+REF_SW/A3     = IF FIELD00 EQ 'SVC' THEN 'SVC'
+                ELSE
+                IF FIELD00 EQ 'CLP' THEN 'CLP'
+                ELSE
+                IF FIELD00 EQ 'N1'  THEN 'N1'
+                ELSE
+                IF FIELD00 EQ 'ST'  THEN 'ST'
+                ELSE REF_SW;
+FIELD00       = IF FIELD00 EQ 'CAS' AND CLP_OR_SVC EQ 'C'
+                   THEN 'CLPC'
+                ELSE
+                IF FIELD00 EQ 'CAS' AND CLP_OR_SVC EQ 'S'
+                   THEN 'SVCC'
+                ELSE
+                IF FIELD00 EQ 'DTM' AND REF_SW     EQ 'SVC'
+                   THEN 'SVCD'
+                ELSE
+                IF FIELD00 EQ 'DTM' AND REF_SW     EQ 'CLP'
+                   THEN 'CLPD'
+                ELSE
+                IF FIELD00 EQ 'DTM' AND REF_SW     EQ 'ST'
+                   THEN 'STD'
+                ELSE
+                 IF FIELD00 EQ 'PER' AND PER_SW     EQ 'N1'
+                   THEN 'N1PR'
+                ELSE
+                IF FIELD00 EQ 'PER' AND PER_SW     EQ 'CLP'
+                   THEN 'CLPP'
+                ELSE
+                IF FIELD00 EQ 'AMT' AND CLP_OR_SVC EQ 'C'
+                   THEN 'CLPA'
+                ELSE
+                IF FIELD00 EQ 'AMT' AND CLP_OR_SVC EQ 'S'
+                   THEN 'SVCA'
+                ELSE
+                IF FIELD00 EQ 'QTY' AND CLP_OR_SVC EQ 'C'
+                   THEN 'CLPQ'
+                ELSE
+                IF FIELD00 EQ 'QTY' AND CLP_OR_SVC EQ 'S'
+                   THEN 'SVCQ'
+                ELSE
+                IF FIELD00 EQ 'REF' AND REF_SW     EQ 'ST'
+                   THEN 'STRF'
+                ELSE
+                IF FIELD00 EQ 'REF' AND REF_SW     EQ 'N1'
+                   THEN 'N1RF'
+                ELSE
+                IF FIELD00 EQ 'REF' AND REF_SW     EQ 'CLP'
+                   THEN 'CLPR'
+                ELSE
+                IF FIELD00 EQ 'REF' AND REF_SW     EQ 'SVC'
+                   THEN 'SVCR'
+                ELSE FIELD00;
+FIELD02/A080 = GETTOK(DATAREC1, 862, 3, '~', 80, FIELD02);
+FIELD03/A080 = GETTOK(DATAREC1, 862, 4, '~', 80, FIELD03);
+FIELD04/A256 = GETTOK(DATAREC1, 862, 5, '~',256, FIELD04);
+FIELD05/A080 = GETTOK(DATAREC1, 862, 6, '~', 80, FIELD05);
+FIELD06/A256 = GETTOK(DATAREC1, 862, 7, '~',256, FIELD06);
+FIELD07/A080 = GETTOK(DATAREC1, 862, 8, '~', 80, FIELD07);
+FIELD08/A256 = GETTOK(DATAREC1, 862, 9, '~',256, FIELD08);
+FIELD09/A080 = GETTOK(DATAREC1, 862,10, '~', 80, FIELD09);
+FIELD10/A048 = GETTOK(DATAREC1, 862,11, '~', 48, FIELD10);
+FIELD11/A033 = GETTOK(DATAREC1, 862,12, '~', 33, FIELD11);
+FIELD12/A060 = GETTOK(DATAREC1, 862,13, '~', 60, FIELD12);
+FIELD13/A033 = GETTOK(DATAREC1, 862,14, '~', 33, FIELD13);
+FIELD14/A018 = GETTOK(DATAREC1, 862,15, '~', 18, FIELD14);
+FIELD15/A035 = GETTOK(DATAREC1, 862,16, '~', 35, FIELD15);
+FIELD16/A018 = GETTOK(DATAREC1, 862,17, '~', 18, FIELD16);
+FIELD17/A030 = GETTOK(DATAREC1, 862,18, '~', 30, FIELD17);
+FIELD18/A018 = GETTOK(DATAREC1, 862,19, '~', 18, FIELD18);
+FIELD19/A030 = GETTOK(DATAREC1, 862,20, '~', 30, FIELD19);
+FIELD20/A030 = GETTOK(DATAREC1, 862,21, '~', 30, FIELD20);
+FIELD21/A018 = GETTOK(DATAREC1, 862,22, '~', 18, FIELD21);
+FIELD22/A018 = GETTOK(DATAREC1, 862,23, '~', 18, FIELD22);
+FIELD23/A030 = GETTOK(DATAREC1, 862,24, '~', 30, FIELD23);
+FIELD24/A018 = GETTOK(DATAREC1, 862,25, '~', 18, FIELD24);
+END
+-*
+TABLEF FILE EDI835_W_CR_LF
+PRINT FIELD00
+      FIELD01
+      FIELD02
+      FIELD03
+      FIELD04
+      FIELD05
+      FIELD06
+      FIELD07
+      FIELD08
+      FIELD09
+      FIELD10
+      FIELD11
+      FIELD12
+      FIELD13
+      FIELD14
+      FIELD15
+      FIELD16
+      FIELD17
+      FIELD18
+      FIELD19
+      FIELD20
+      FIELD21
+      FIELD22
+      FIELD23
+      FIELD24
+ON TABLE SET ALL ON
+ON TABLE SAVE AS EDI835_BY_RT
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS&RECORDS.EVAL LINES&LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN
