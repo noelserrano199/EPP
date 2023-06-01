@@ -1,0 +1,218 @@
+-******************************************************************************-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*  Programmer      Date      Description of Change
+-* ------------  ----------  --------------------------------------------------
+-* WLS           08/09/2013  Changed WHERE TOTAL in STEP002 to WHERE
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Truncate &SVC.EVAL&SVC_TBL.EVAL Table
+-*-----------------------------------------------------------------------------
+SQL
+TRUNCATE TABLE &SVC.EVAL&SVC_TBL.EVAL;
+-*COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Extract SVC records from 835 EDI file
+-*-----------------------------------------------------------------------------
+DEFINE FILE EDI835_BY_RT_LX
+FILE_ID/I10                              = &FILE_ID.EVAL;
+GS_GRP_SEQ_NO/I5 WITH GS_FUNC_ID_CD      = GS_GRP_SEQ_NO + 1;
+ST_SEQ_NO/I7  WITH ST_TXN_SET_CNTL_NO    = IF GS_GRP_SEQ_NO        EQ LAST GS_GRP_SEQ_NO
+                                              THEN ST_SEQ_NO + 1
+                                           ELSE 1;
+LX_SEQ_NO/I4     WITH LX_ASGND_NO        = IF   FILE_ID            EQ LAST FILE_ID
+                                            AND GS_GRP_SEQ_NO      EQ LAST GS_GRP_SEQ_NO
+                                            AND ST_SEQ_NO          EQ LAST ST_SEQ_NO
+                                                THEN LX_SEQ_NO + 1
+                                           ELSE 1;
+CLP_CLM_SEQ_NO/I6 WITH CLP_CLM_SUBMTR_ID = IF   FILE_ID            EQ LAST FILE_ID
+                                            AND GS_GRP_SEQ_NO      EQ LAST GS_GRP_SEQ_NO
+                                            AND ST_SEQ_NO          EQ LAST ST_SEQ_NO
+                                            AND LX_SEQ_NO          EQ LAST LX_SEQ_NO
+                                                THEN CLP_CLM_SEQ_NO + 1
+                                           ELSE 1;
+SVC_SEQ_NO/I6    WITH SVC_COMP_MED_PROC1 = IF   FILE_ID            EQ LAST FILE_ID
+                                            AND GS_GRP_SEQ_NO      EQ LAST GS_GRP_SEQ_NO
+                                            AND ST_SEQ_NO          EQ LAST ST_SEQ_NO
+                                            AND LX_SEQ_NO          EQ LAST LX_SEQ_NO
+                                            AND CLP_CLM_SEQ_NO     EQ LAST CLP_CLM_SEQ_NO
+                                                THEN SVC_SEQ_NO + 1
+                                           ELSE 1;
+SVC_EPP_GEN_SEQ/I2                       = 0;
+SVC_COMP_SEPERATOR/A1  = EDIT(SVC_COMP_MED_PROC1, '$$9');
+SVC_PROC1_SVCID_QLFR/A2= EDIT(SVC_COMP_MED_PROC1, '99');
+SVC_PROC1_CD/A48       = GETTOK(SVC_COMP_MED_PROC1,  54, 2, SVC_COMP_SEPERATOR, 48, 'A48');
+SVC_PROC1_MODF1/A2     = GETTOK(SVC_COMP_MED_PROC1,  54, 3, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC1_MODF2/A2     = GETTOK(SVC_COMP_MED_PROC1,  54, 4, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC1_MODF3/A2     = GETTOK(SVC_COMP_MED_PROC1,  54, 5, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC1_MODF4/A2     = GETTOK(SVC_COMP_MED_PROC1,  54, 6, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC2_SVCID_QLFR/A2= EDIT(SVC_COMP_MED_PROC2, '99');
+SVC_PROC2_CD/A48       = GETTOK(SVC_COMP_MED_PROC2, 145, 2, SVC_COMP_SEPERATOR, 48, 'A48');
+SVC_PROC2_MODF1/A2     = GETTOK(SVC_COMP_MED_PROC2, 145, 3, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC2_MODF2/A2     = GETTOK(SVC_COMP_MED_PROC2, 145, 4, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC2_MODF3/A2     = GETTOK(SVC_COMP_MED_PROC2, 145, 5, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC2_MODF4/A2     = GETTOK(SVC_COMP_MED_PROC2, 145, 6, SVC_COMP_SEPERATOR,  2, 'A02');
+SVC_PROC2_CD_DESC/A80  = GETTOK(SVC_COMP_MED_PROC2, 145, 7, SVC_COMP_SEPERATOR, 80, 'A80');
+SVC_CLARITY_TX_ID/A18  = '0';
+SVC_TX_ID_MATCH_TYPE/A3= '   ';
+SVC_CONTR_PAYOR_IND/A1 = 'Y';
+SVC_DUP_PMT_IND/A1     = 'N';
+SVC_RVSD_INVC_NO/A38   = '0';
+SVC_CURRENT_BALANCE/I2 = 0;
+SVC_INS_AMOUNT_PAID/I2 = 0;
+SVC_INS_AMOUNT_ADJ/I2  = 0;
+SVC_CRG_IS_VOID_YN/A1  = 'N';
+SVC_PRIOR_DENIAL_YN/A1 = 'N';
+SVC_MULTI_USE_AMOUNT/I2= 0;
+SVC_SCENARIO/A01       = 'X';
+SVC_INCL_RSN_CD/A3     = 'ORG';
+SVC_EXCL_RSN_CD/A3     = '   ';
+END
+-*
+TABLE FILE EDI835_BY_RT_LX
+PRINT SVC_COMP_SEPERATOR    AS SVC_COMP_SEPERATOR
+      SVC_PROC1_SVCID_QLFR  AS SVC_PROC1_SVC_ID_QLFR
+      SVC_PROC1_CD          AS SVC_PROC1_CD
+      SVC_PROC1_MODF1       AS SVC_PROC1_MODF1
+      SVC_PROC1_MODF2       AS SVC_PROC1_MODF2
+      SVC_PROC1_MODF3       AS SVC_PROC1_MODF3
+      SVC_PROC1_MODF4       AS SVC_PROC1_MODF4
+      SVC_ORGLI_PRVDR_PYMT  AS SVC_ORGLI_PRVDR_PYMT
+      SVC_LI_PRVDR_PYMT     AS SVC_LI_PRVDR_PYMT
+      SVC_NTL_BILNG_REV_CD  AS SVC_NTL_BILNG_REV_CD
+      SVC_UNTS_SVC_PD_CNT   AS SVC_UNTS_SVC_PD_CNT
+      SVC_PROC2_SVCID_QLFR  AS SVC_PROC2_SVC_ID_QLFR
+      SVC_PROC2_CD          AS SVC_PROC2_CD
+      SVC_PROC2_MODF1       AS SVC_PROC2_MODF1
+      SVC_PROC2_MODF2       AS SVC_PROC2_MODF2
+      SVC_PROC2_MODF3       AS SVC_PROC2_MODF3
+      SVC_PROC2_MODF4       AS SVC_PROC2_MODF4
+      SVC_PROC2_CD_DESC     AS SVC_PROC2_CD_DESC
+      SVC_ORG_UNTS_SVC_CNT  AS SVC_ORG_UNTS_SVC_CNT
+      SVC_CLARITY_TX_ID     AS SVC_CLARITY_TX_ID
+      SVC_TX_ID_MATCH_TYPE  AS SVC_TX_ID_MATCH_TYPE
+      SVC_CONTR_PAYOR_IND   AS SVC_CONTR_PAYOR_IND
+      SVC_DUP_PMT_IND       AS SVC_DUP_PMT_IND
+      SVC_RVSD_INVC_NO      AS SVC_RVSD_INVC_NO
+      SVC_CURRENT_BALANCE   AS SVC_CURRENT_BALANCE
+      SVC_INS_AMOUNT_PAID   AS SVC_INS_AMOUNT_PAID
+      SVC_INS_AMOUNT_ADJ    AS SVC_INS_AMOUNT_ADJ
+      SVC_CRG_IS_VOID_YN    AS SVC_CRG_IS_VOID_YN
+      SVC_PRIOR_DENIAL_YN   AS SVC_PRIOR_DENIAL_YN
+      SVC_MULTI_USE_AMOUNT  AS SVC_MULTI_USE_AMOUNT
+      SVC_INCL_RSN_CD       AS SVC_INCL_RSN_CD
+      SVC_SCENARIO          AS SVC_SCENARIO
+      SVC_EXCL_RSN_CD       AS SVC_EXCL_RSN_CD
+      ISA_IC_DATE           NOPRINT
+BY    FILE_ID               AS SVC_ISA_FILE_ID
+BY    GS_GRP_SEQ_NO         AS SVC_GS_GRP_SEQ_NO
+BY    ST_SEQ_NO             AS SVC_ST_SEQ_NO
+BY    LX_SEQ_NO             AS SVC_LX_SEQ_NO
+BY    CLP_CLM_SEQ_NO        AS SVC_CLP_CLM_SEQ_NO
+BY    SVC_SEQ_NO            AS SVC_SEQ_NO
+BY    SVC_EPP_GEN_SEQ       AS SVC_EPP_GEN_SEQ
+WHERE SVC_SEQ NE 0;
+ON TABLE SET ALL ON
+ON TABLE SET ASNAMES ON
+ON TABLE SET HOLDLIST PRINTONLY
+ON TABLE HOLD AS 835RECS
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL RECORDS &RECORDS.EVAL LINES &LINES.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-SET  &NO_SVC_SEGS  =  IF &RECORDS.EVAL EQ 0 THEN 'Y' ELSE 'N';
+-RUN
+-IF   &NO_SVC_SEGS  EQ 0 THEN GOTO THE_END;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Insert SVC rows to &SVC.EVAL&SVC_TBL.EVAL
+-*-----------------------------------------------------------------------------
+MODIFY FILE &SVC_TBL.EVAL
+SQL SET LOADONLY
+MATCH SVC_ISA_FILE_ID SVC_GS_GRP_SEQ_NO SVC_ST_SEQ_NO SVC_LX_SEQ_NO SVC_CLP_CLM_SEQ_NO SVC_SEQ_NO
+ON MATCH   REJECT
+ON NOMATCH INCLUDE
+FIXFORM FROM 835RECS
+DATA ON 835RECS
+LOG FORMAT ON LOGFMT MSG OFF
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

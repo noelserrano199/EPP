@@ -1,0 +1,295 @@
+-TYPE *************************************************************************
+-TYPE *                      &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-******************************************************************************
+-* Program: epp_claim_level_pmt_cl1
+-* Author:  Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Fix date on 835 when Invoice and CPT code match
+-**** Write new record first -then mark old record as excluded in next step
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL
+SELECT DISTINCT
+-*      RTRIM(T0.CLP_CLM_SUBMTR_ID)
+      SVC_DTM_ISA_FILE_ID
+     ,SVC_DTM_GS_GRP_SEQ_NO
+     ,SVC_DTM_ST_SEQ_NO
+     ,SVC_DTM_LX_SEQ_NO
+     ,SVC_DTM_CLP_CLM_SEQ_NO
+     ,SVC_DTM_SVC_SEQ_NO
+     ,SVC_DTM_SEQ_NO
+	 ,TO_CHAR(SVC_DTM_EPP_GEN_SEQ+1)             AS SVC_DTM_EPP_GEN_SEQ
+     ,SVC_DTM_DTTM_QLFR
+     ,TO_CHAR(ORIG_SERVICE_DATE, 'YYYYMMDD')     AS ORIG_SERVICE_DATE
+     ,SVC_DTM_TIME
+     ,SVC_DTM_TIME_CD
+     ,SVC_DTM_DTTM_PD_FMT_QLFR
+     ,SVC_DTM_DTTM_PD
+	 ,'FXD'                                      AS SVC_DTM_INCL_RSN_CD
+	 ,'   '                                      AS SVC_DTM_EXCL_RSN_CD
+FROM
+(
+SELECT
+      COALESCE(RTRIM(CLP_CLM_SUBMTR_ID),' ')     AS CLP_CLM_SUBMTR_ID
+     ,TO_DATE(SVC_DTM_DATE, 'yyyymmdd')          AS SVC_DTM_DATE
+     ,RTRIM(SVC_PROC1_CD)                        AS SVC_PROC1_CD
+-*     ,RTRIM(NA_N1_ID_CD)                         AS NA_N1_ID_CD
+     ,RANK()
+      OVER ( PARTITION BY RTRIM(CLP_CLM_SUBMTR_ID)
+	                     ,TO_DATE(SVC_DTM_DATE, 'yyyymmdd')
+                         ,RTRIM(SVC_PROC1_CD)
+             ORDER BY     CLP_CLM_SUBMTR_ID
+			             ,SVC_DTM_DATE
+                         ,SVC_PROC1_CD
+                         ,SVC_SEQ_NO )           AS T_RANK
+     ,SVC_DTM_ISA_FILE_ID
+     ,SVC_DTM_GS_GRP_SEQ_NO
+     ,SVC_DTM_ST_SEQ_NO
+     ,SVC_DTM_LX_SEQ_NO
+     ,SVC_DTM_CLP_CLM_SEQ_NO
+     ,SVC_DTM_SVC_SEQ_NO
+     ,SVC_DTM_SEQ_NO
+	 ,TO_NUMBER(SVC_DTM_EPP_GEN_SEQ)             AS SVC_DTM_EPP_GEN_SEQ
+     ,SVC_DTM_DTTM_QLFR
+     ,SVC_DTM_TIME
+     ,SVC_DTM_TIME_CD
+     ,SVC_DTM_DTTM_PD_FMT_QLFR
+     ,SVC_DTM_DTTM_PD
+FROM  &CLP.EVAL&CLP_TBL.EVAL
+-*INNER JOIN
+-*      &NA.EVAL&NA_TBL.EVAL
+-*ON    NA_ISA_FILE_ID             = CLP_ISA_FILE_ID
+-*  AND NA_GS_GRP_SEQ_NO           = CLP_GS_GRP_SEQ_NO
+-*  AND NA_ST_SEQ_NO               = CLP_ST_SEQ_NO
+-*  AND RTRIM(NA_N1_ENTITY_ID_CD)  = 'PR'
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID            = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO          = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO              = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO              = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO         = CLP_CLM_SEQ_NO
+  AND SVC_EXCL_RSN_CD            = '   '
+  AND RTRIM(SVC_CLARITY_TX_ID)   = '0'
+INNER JOIN
+      &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL
+ON    SVC_DTM_ISA_FILE_ID        = SVC_ISA_FILE_ID
+  AND SVC_DTM_GS_GRP_SEQ_NO      = SVC_GS_GRP_SEQ_NO
+  AND SVC_DTM_ST_SEQ_NO          = SVC_ST_SEQ_NO
+  AND SVC_DTM_LX_SEQ_NO          = SVC_LX_SEQ_NO
+  AND SVC_DTM_CLP_CLM_SEQ_NO     = SVC_CLP_CLM_SEQ_NO
+  AND SVC_DTM_SVC_SEQ_NO         = SVC_SEQ_NO
+  AND SVC_DTM_DTTM_QLFR          IN( '472','150' )
+  AND SVC_DTM_EXCL_RSN_CD        = '   '
+WHERE SUBSTR(CLP_CLM_SUBMTR_ID,1,1) = 'P'
+ORDER BY 1,2,3,4
+) T0
+INNER JOIN
+(
+SELECT DISTINCT
+      CLP_CLM_SUBMTR_ID
+     ,SVC_DTM_DATE
+	 ,SVC_PROC1_CD
+     ,RANK()
+      OVER ( PARTITION BY CLP_CLM_SUBMTR_ID
+	                     ,SVC_DTM_DATE
+                         ,SVC_PROC1_CD
+             ORDER BY     CLP_CLM_SUBMTR_ID
+			             ,SVC_DTM_DATE
+                         ,SVC_PROC1_CD
+                         ,TX_ID  )             AS T_RANK
+     ,TX_ID
+	 ,ORIG_SERVICE_DATE
+FROM
+(
+SELECT
+      CLP_CLM_SUBMTR_ID
+     ,SVC_DTM_DATE
+	 ,SVC_PROC1_CD
+     ,TX_ID
+	 ,ORIG_SERVICE_DATE
+FROM
+(
+SELECT
+      RTRIM(CLP_CLM_SUBMTR_ID)                 AS CLP_CLM_SUBMTR_ID
+	 ,TO_DATE(SVC_DTM_DATE, 'yyyymmdd')        AS SVC_DTM_DATE
+	 ,SUBSTR(SVC_DTM_DATE,1,4)                 AS SVC_DTM_YYYY
+	 ,SUBSTR(SVC_DTM_DATE,5,2)                 AS SVC_DTM_MM
+	 ,SUBSTR(SVC_DTM_DATE,7,2)                 AS SVC_DTM_DD
+ 	 ,RTRIM(SVC_PROC1_CD)                      AS SVC_PROC1_CD
+FROM  &CLP.EVAL&CLP_TBL.EVAL
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID            = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO          = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO              = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO              = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO         = CLP_CLM_SEQ_NO
+  AND SVC_EXCL_RSN_CD            = '   '
+  AND RTRIM(SVC_CLARITY_TX_ID)   = '0'
+INNER JOIN
+      &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL
+ON    SVC_DTM_ISA_FILE_ID        = SVC_ISA_FILE_ID
+  AND SVC_DTM_GS_GRP_SEQ_NO      = SVC_GS_GRP_SEQ_NO
+  AND SVC_DTM_ST_SEQ_NO          = SVC_ST_SEQ_NO
+  AND SVC_DTM_LX_SEQ_NO          = SVC_LX_SEQ_NO
+  AND SVC_DTM_CLP_CLM_SEQ_NO     = SVC_CLP_CLM_SEQ_NO
+  AND SVC_DTM_SVC_SEQ_NO         = SVC_SEQ_NO
+  AND SVC_DTM_DTTM_QLFR          IN( '472','150' )
+  AND SVC_DTM_EXCL_RSN_CD        = '   '
+WHERE SUBSTR(CLP_CLM_SUBMTR_ID,1,1) = 'P'
+) T1
+INNER JOIN
+      CLARITY_TDL_TRAN
+ON    INVOICE_NUMBER                  = CLP_CLM_SUBMTR_ID
+  AND CPT_CODE                        = SVC_PROC1_CD
+  AND DETAIL_TYPE                     = '50'
+  AND ORIG_SERVICE_DATE               <> SVC_DTM_DATE
+  AND ( (       SVC_DTM_MM            = TO_CHAR(ORIG_SERVICE_DATE, 'mm')
+            AND SVC_DTM_DD            = TO_CHAR(ORIG_SERVICE_DATE, 'dd'))
+      OR (      SVC_DTM_YYYY          = TO_CHAR(ORIG_SERVICE_DATE, 'yyyy')
+            AND SVC_DTM_DD            = TO_CHAR(ORIG_SERVICE_DATE, 'dd')
+		    AND NOT (    SVC_DTM_MM   = TO_CHAR(ORIG_SERVICE_DATE, 'mm')
+                     AND SVC_DTM_DD   = TO_CHAR(ORIG_SERVICE_DATE, 'dd')))
+	  OR (      SVC_DTM_YYYY          = TO_CHAR(ORIG_SERVICE_DATE, 'yyyy')
+	        AND SVC_DTM_MM            = TO_CHAR(ORIG_SERVICE_DATE, 'mm')
+            AND NOT (    SVC_DTM_MM   = TO_CHAR(ORIG_SERVICE_DATE, 'mm')
+                     AND SVC_DTM_DD   = TO_CHAR(ORIG_SERVICE_DATE, 'dd'))
+            AND NOT (    SVC_DTM_YYYY = TO_CHAR(ORIG_SERVICE_DATE, 'yy')
+                     AND SVC_DTM_DD   = TO_CHAR(ORIG_SERVICE_DATE, 'dd'))))
+WHERE NOT EXISTS
+      ( SELECT 1
+        FROM   &SVC.EVAL&SVC_TBL.EVAL
+        WHERE  TX_ID = SVC_CLARITY_TX_ID )
+  AND NOT EXISTS
+      ( SELECT 1
+        FROM   CLARITY_TDL_TRAN
+        WHERE  INVOICE_NUMBER    = CLP_CLM_SUBMTR_ID
+          AND  DETAIL_TYPE       = '50'
+          AND  CPT_CODE          = SVC_PROC1_CD
+          AND  ORIG_SERVICE_DATE = SVC_DTM_DATE )
+)
+ORDER BY 1,2,3,4
+) T2
+ON    T2.CLP_CLM_SUBMTR_ID       = T0.CLP_CLM_SUBMTR_ID
+  AND T2.SVC_DTM_DATE            = T0.SVC_DTM_DATE
+  AND T2.SVC_PROC1_CD            = T0.SVC_PROC1_CD
+  AND T2.T_RANK                  = T0.T_RANK
+ORDER BY 1,2,3,4,5,6,7,8
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Mark original SVC_DTM with bad date for exclusion
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL UT
+USING (
+SELECT
+      B.SVC_DTM_ISA_FILE_ID
+     ,B.SVC_DTM_GS_GRP_SEQ_NO
+     ,B.SVC_DTM_ST_SEQ_NO
+     ,B.SVC_DTM_LX_SEQ_NO
+     ,B.SVC_DTM_CLP_CLM_SEQ_NO
+     ,B.SVC_DTM_SVC_SEQ_NO
+     ,B.SVC_DTM_SEQ_NO
+	 ,B.SVC_DTM_EPP_GEN_SEQ
+FROM  &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL A
+INNER JOIN
+      &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL B
+ON    B.SVC_DTM_ISA_FILE_ID    = A.SVC_DTM_ISA_FILE_ID
+  AND B.SVC_DTM_GS_GRP_SEQ_NO      = A.SVC_DTM_GS_GRP_SEQ_NO
+  AND B.SVC_DTM_ST_SEQ_NO = A.SVC_DTM_ST_SEQ_NO
+  AND B.SVC_DTM_LX_SEQ_NO          = A.SVC_DTM_LX_SEQ_NO
+  AND B.SVC_DTM_CLP_CLM_SEQ_NO     = A.SVC_DTM_CLP_CLM_SEQ_NO
+  AND B.SVC_DTM_SVC_SEQ_NO         = A.SVC_DTM_SVC_SEQ_NO
+  AND B.SVC_DTM_SEQ_NO             = A.SVC_DTM_SEQ_NO
+  AND B.SVC_DTM_INCL_RSN_CD       <> 'FXD'
+  AND B.SVC_DTM_EXCL_RSN_CD        = '   '
+WHERE A.SVC_DTM_INCL_RSN_CD        = 'FXD'
+) ST
+ON  ( UT.SVC_DTM_ISA_FILE_ID   = ST.SVC_DTM_ISA_FILE_ID
+  AND UT.SVC_DTM_GS_GRP_SEQ_NO     = ST.SVC_DTM_GS_GRP_SEQ_NO
+  AND UT.SVC_DTM_ST_SEQ_NO= ST.SVC_DTM_ST_SEQ_NO
+  AND UT.SVC_DTM_LX_SEQ_NO         = ST.SVC_DTM_LX_SEQ_NO
+  AND UT.SVC_DTM_CLP_CLM_SEQ_NO    = ST.SVC_DTM_CLP_CLM_SEQ_NO
+  AND UT.SVC_DTM_SVC_SEQ_NO        = ST.SVC_DTM_SVC_SEQ_NO
+  AND UT.SVC_DTM_SEQ_NO            = ST.SVC_DTM_SEQ_NO
+  AND UT.SVC_DTM_EPP_GEN_SEQ       = ST.SVC_DTM_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET UT.SVC_DTM_EXCL_RSN_CD  = 'FXD'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************

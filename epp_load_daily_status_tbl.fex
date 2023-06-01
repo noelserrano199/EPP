@@ -1,0 +1,362 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-RUN
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+TRUNCATE TABLE &DSFA.EVAL&DSFA_TBL.EVAL;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF &RETCODE.EVAL   NE 0 THEN GOTO ERRORS;
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &DSFA.EVAL&DSFA_TBL.EVAL
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      TRUNC(SYSDATE)          AS REPORT_DATE
+     ,IFCT_FILE_ID            AS FILE_ID
+     ,REMIT_RUN               AS REMIT_RUN
+     ,ACCEPT_DT               AS ACCEPT_DT
+     ,RECVD_AMT               AS RECVD_AMT
+     ,0-SUM(AMOUNT)           AS POSTED_AMT
+     ,RECVD_AMT+SUM(AMOUNT)   AS UNPOSTED_AMT
+FROM
+(
+SELECT
+      IFCT_FILE_ID
+     ,IFCT_FILE_NAME
+     ,R.FILE_NAME
+     ,R.REMIT_RUN
+     ,R.RUN_STATUS_C
+     ,TRUNC(IFCT_STS_DT)
+     ,IFCT_STS
+     ,R.ACCEPT_DT
+     ,R.REJECT_DT
+     ,R.RECVD_AMT
+     ,( SELECT MIN(TRUNC(IFCT_STS_DT))
+        FROM   &IFCT.&IFCT_TBL.EVAL
+        LEFT OUTER JOIN
+               REMIT_RUN_SUM R
+        ON     SUBSTR(R.FILE_NAME,1,LENGTH( R.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+           AND R.BILL_SYS_C = 1
+        WHERE  TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 90), 'yyyy-mm-dd')
+          AND  IFCT_STS NOT IN('REN','BAD')
+          AND NOT
+            (  IFCT_STS IN('OLD','DUP')
+           AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')
+           AND R.ACCEPT_DT IS NOT NULL )
+          AND NOT
+            (  R.ACCEPT_DT IS NULL
+           AND R.REJECT_DT IS NOT NULL
+           AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')))
+                                                                 AS MIN_FILE_DATE
+     ,( SELECT MAX(TRUNC(IFCT_STS_DT))
+        FROM   &IFCT.&IFCT_TBL.EVAL
+        LEFT OUTER JOIN
+               REMIT_RUN_SUM R
+        ON     SUBSTR(R.FILE_NAME,1,LENGTH( R.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+           AND R.BILL_SYS_C = 1
+        WHERE  TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 90), 'yyyy-mm-dd')
+          AND  IFCT_STS NOT IN('REN','BAD')
+          AND NOT
+            (  IFCT_STS IN('OLD','DUP')
+           AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')
+           AND R.ACCEPT_DT IS NOT NULL )
+          AND NOT
+            (  R.ACCEPT_DT IS NULL
+           AND R.REJECT_DT IS NOT NULL
+           AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')))
+                                                                 AS MAX_FILE_DATE
+FROM  &IFCT.&IFCT_TBL.EVAL
+LEFT OUTER JOIN
+      REMIT_RUN_SUM R
+ON   ( SUBSTR(R.FILE_NAME,1,LENGTH( R.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+  AND  R.BILL_SYS_C = 1 )
+  OR ( R.FILE_NAME  = RTRIM(IFCT_FILE_NAME)
+  AND  R.BILL_SYS_C = 1 )
+WHERE
+      ( TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')
+   OR ( TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  >  TO_CHAR( TRUNC(SYSDATE - 30), 'yyyy-mm-dd')
+    AND IFCT_STS NOT IN('REN','BAD')
+    AND NOT
+      ( IFCT_STS IN('OLD','DUP')
+    AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd')
+    AND R.ACCEPT_DT IS NOT NULL )
+    AND NOT
+      ( R.ACCEPT_DT IS NULL
+    AND R.REJECT_DT IS NOT NULL
+    AND TO_CHAR( IFCT_STS_DT, 'yyyy-mm-dd')  <  TO_CHAR( TRUNC(SYSDATE - 12), 'yyyy-mm-dd'))))
+ 
+    AND NOT EXISTS
+	  ( SELECT 1
+	    FROM  REMIT_RUN_SUM R2
+		WHERE SUBSTR(R2.FILE_NAME,1,LENGTH( R2.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+		  AND R2.REMIT_RUN <> R.REMIT_RUN
+		  AND R.REJECT_DT IS NOT NULL
+		  AND R2.REJECT_DT IS NULL )
+    AND NOT EXISTS
+	  ( SELECT 1
+	    FROM  REMIT_RUN_SUM R2
+		WHERE SUBSTR(R2.FILE_NAME,1,LENGTH( R2.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+		  AND R2.REMIT_RUN <> R.REMIT_RUN
+		  AND R.RECVD_AMT  <> 0
+		  AND R2.RECVD_AMT =  0 )
+    AND NOT EXISTS
+	  ( SELECT 1
+	    FROM  REMIT_RUN_SUM R2
+		WHERE SUBSTR(R2.FILE_NAME,1,LENGTH( R2.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+		  AND R2.REMIT_RUN > R.REMIT_RUN )
+-*
+-*WHERE RTRIM(IFCT_FILE_NAME) = '20180703_BOA_POST_TAPESTRY_ERA_P_1725.835'
+-*    AND R.FILE_NAME    = '20180703_BOA_POST_TAPESTRY_ERA_P_1725.835'
+ 
+ORDER BY 1,2
+)
+LEFT OUTER JOIN
+      CLARITY_TDL_TRAN  A
+ON    A.POST_DATE                 BETWEEN MIN_FILE_DATE
+                                      AND MAX_FILE_DATE
+  AND A.DETAIL_TYPE               = 2
+  AND SUBSTR(A.TX_COMMENT, 27, 6) = REMIT_RUN
+WHERE RECVD_AMT                   IS NOT NULL
+  AND NOT
+    ( ACCEPT_DT IS NULL
+  AND REJECT_DT IS NOT NULL
+  AND EXISTS
+      ( SELECT /*+ ORDERED NO_UNNEST */ 1
+        FROM   REMIT_RUN_SUM R2
+        WHERE  SUBSTR(R2.FILE_NAME,1,LENGTH( R2.FILE_NAME )-8) = SUBSTR(RTRIM(IFCT_FILE_NAME),1,LENGTH(RTRIM(IFCT_FILE_NAME))-4)
+          AND  R2.REJECT_DT IS NULL))
+GROUP BY
+      IFCT_FILE_ID
+     ,REMIT_RUN
+     ,RECVD_AMT
+     ,ACCEPT_DT
+ORDER BY 1,2
+;
+TABLEF FILE SQLOUT
+PRINT *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP     = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME  = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-RUN
+-*-----------------------------------------------------------------------------
+SQL
+SELECT TO_CHAR(CAST(COUNT(*) AS NUMBER(5,0))) AS XXX
+FROM  &DSFA.EVAL&DSFA_TBL.EVAL
+WHERE DSFA_REPORT_DATE = TRUNC(SYSDATE)
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+DEFINE FILE HOLD
+SUBJECT/A60      = 'Question - RVU MV Refresh ';
+HEADLINE_21/A15  = 'Please reply to';
+HEADLINE_22/A28  = 'with any questions or issues';
+MAIL_LINK/A187   = HEADLINE_21| ' <A href="mailto:WSchwartz@mednet.ucla.edu?subject='|SUBJECT|'">WSchwartz@mednet.ucla.edu </A> ' |HEADLINE_22 ;
+BLANK/A10        = '          ';
+END
+-*
+TABLE FILE HOLD
+HEADING
+" "
+"UCLA Health System-Faculty Practice Group"
+"Update of Daily Status Report File Amounts"
+" "
+"~~~~~~~~~~<XXX>Records Added<+0>~~~~~~~~~~"
+" "
+" "
+"<MAIL_LINK>  "
+PRINT BLANK AS ''
+      BLANK AS ''
+      BLANK AS ''
+      BLANK AS ''
+-*      BLANK AS ''
+ON TABLE SET PAGE NOLEAD
+ON TABLE SET ONLINE-FMT HTML
+ON TABLE SET HTMLCSS ON
+ON TABLE PCHOLD FORMAT HTML
+ON TABLE SET STYLE *
+     PAGESIZE='Letter',
+     SQUEEZE=ON,
+     GRID=OFF,
+     WRAP=OFF,
+     ORIENTATION=LANDSCAPE,
+     COLOR='NAVY BLUE',
+     STYLE=BOLD,
+$
+TYPE=HEADING,
+     HEADALIGN=BODY,
+     FONT=ARIAL,
+     STYLE=BOLD,
+     SIZE=15,
+     JUSTIFY=CENTER,
+     COLOR='NAVY BLUE',
+     BORDER-COLOR=GREEN,
+     BORDER-TOP=MEDIUM,
+     BORDER-BOTTOM=MEDIUM,
+     BORDER-TOP-STYLE=DOUBLE,
+     BORDER-BOTTOM-STYLE=DOUBLE, $
+TYPE=HEADING,
+     LINE=2,
+     FONT=ARIAL,
+     STYLE=BOLD,
+     SIZE=14,
+     JUSTIFY=CENTER,
+     COLOR='NAVY BLUE',
+     COLSPAN=4, $
+TYPE=HEADING,
+     LINE=3,
+     FONT=ARIAL,
+     STYLE=BOLD,
+     SIZE=14,
+     JUSTIFY=CENTER,
+     COLOR='NAVY BLUE',
+     COLSPAN=4, $
+TYPE=HEADING,
+     LINE=5,
+     ITEM=1,
+     FONT=ARIAL,
+     STYLE=NORMAL,
+     SIZE=14,
+     JUSTIFY=LEFT,
+     COLOR='BLUE',
+     COLSPAN=1, $
+TYPE=HEADING,
+     LINE=5,
+     ITEM=2,
+     FONT=ARIAL,
+     STYLE=NORMAL,
+     SIZE=14,
+     JUSTIFY=CENTER,
+     COLOR='BLUE',
+     COLSPAN=1, $
+TYPE=HEADING,
+     LINE=5,
+     ITEM=3,
+     FONT=ARIAL,
+     STYLE=NORMAL,
+     SIZE=14,
+     JUSTIFY=CENTER,
+     COLOR='BLUE',
+     COLSPAN=1, $
+TYPE=HEADING,
+     LINE=5,
+     ITEM=4,
+     FONT=ARIAL,
+     STYLE=NORMAL,
+     SIZE=14,
+     JUSTIFY=RIGHT,
+     COLOR='BLUE',
+     COLSPAN=1, $
+TYPE=HEADING,
+     LINE=8,
+     FONT=ARIAL,
+     STYLE=NORMAL,
+     SIZE=7,
+     JUSTIFY=CENTER,
+     COLOR='RED',
+     COLSPAN=4, $
+$
+ENDSTYLE
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-TYPE -------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

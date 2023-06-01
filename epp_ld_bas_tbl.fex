@@ -1,0 +1,236 @@
+-TYPE *************************************************************************-TYPE *                      &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL ***
+-*-----------------------------------------------------------------------------
+SQL
+SELECT 
+      BAS_SCENARIO 
+     ,BAS_GRP_CD 
+     ,BAS_RSN_CD 
+     ,BAS_CONTR_PYR 
+     ,BAS_CHG_IND 
+     ,BAS_NEW_GRP_CD 
+     ,BAS_NEW_RSN_CD 
+FROM   &BAS.EVAL&BAS_TBL.EVAL
+-*WHERE RTRIM(BAS_CHG_IND) = 'MOD'
+ORDER BY 1,2,3,4,5
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD AS ERABAL4 FORMAT ALPHA
+END
+-RUN
+TABLE FILE ERABAL4
+PRINT BAS_SCENARIO     AS 'Rule #' 
+      BAS_GRP_CD       AS 'Input,Group,Code' 
+      BAS_RSN_CD       AS 'Input,Rsn,Code'
+      BAS_CONTR_PYR    AS 'Contract,Payor,Y/N'
+      BAS_CHG_IND      AS 'Chg,Ind' 
+      BAS_NEW_GRP_CD   AS 'Output,Group,Code'
+      BAS_NEW_RSN_CD   AS 'Output,Rsn,Code'
+ON TABLE SET BYDISPLAY ON
+ON TABLE PCHOLD FORMAT EXL2K
+ON TABLE SET SPACES    2
+ON TABLE SET STYLE *
+UNITS='IN',
+SQUEEZE='ON',
+TITLETEXT='Group/Reason Code Mapping',
+GRID='ON',$
+TYPE='REPORT',COLOR='RGB(83 70 115)',BORDER='LIGHT',BORDER-COLOR='RGB(83 104 149)',FONT='ARIAL',SIZE='8',TOPGAP='0.02',BOTTOMGAP='0.02',LEFTGAP='0.00',RIGHTGAP='0.0',$
+TYPE='HEADING',SIZE='16', COLSPAN='19', BORDER='OFF',JUSTIFY='CENTER',BACKCOLOR='RGB(83 104 149)',COLOR='WHITE',STYLE='BOLD',$
+TYPE='TITLE',SIZE='08',JUSTIFY='CENTER',STYLE='-UNDERLINE+BOLD',COLOR='BLACK',BACKCOLOR='RGB(224 224 224)',$
+-*
+-*DEFMACRO=COND0001, MACTYPE=RULE, WHEN=CONSET1 EQ 1,         $
+-*DEFMACRO=COND0002, MACTYPE=RULE, WHEN=CONSET2 EQ 0,         $
+-*DEFMACRO=COND0003, MACTYPE=RULE, WHEN=CONSET2 EQ 1,         $
+-*DEFMACRO=COND0004, MACTYPE=RULE, WHEN=CONSET1 EQ 0,         $
+-*
+TYPE=REPORT, HFREEZE=TOP, $
+TYPE=REPORT,  COLUMN=BAS_SCENARIO,   SQUEEZE=0.35,  JUSTIFY=CENTER, SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_GRP_CD,     SQUEEZE=0.50,  JUSTIFY=CENTER, SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_RSN_CD,     SQUEEZE=0.50,  JUSTIFY=RIGHT,  SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_CONTR_PYR,  SQUEEZE=0.50,  JUSTIFY=CENTER, SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_CHG_IND,    SQUEEZE=0.50,  JUSTIFY=CENTER, SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_NEW_GRP_CD, SQUEEZE=0.50,  JUSTIFY=CENTER, SIZE=8, $
+TYPE=REPORT,  COLUMN=BAS_NEW_RSN_CD, SQUEEZE=0.50,  JUSTIFY=CENTER, SIZE=8, $
+-*TYPE=REPORT,  COLUMN=CPT_DESC,     SQUEEZE=1.35,  JUSTIFY=LEFT,   SIZE=8, $
+-*TYPE=REPORT,  COLUMN=PROC_NAME,    SQUEEZE=2.40,  JUSTIFY=LEFT,   SIZE=8, $
+-*TYPE=REPORT,  COLUMN=XPOST_DATE,   SQUEEZE=0.55,  JUSTIFY=CENTER, SIZE=8, $
+-*TYPE=REPORT,  COLUMN=XSERV_DATE,   SQUEEZE=0.60,  JUSTIFY=CENTER, SIZE=8, $
+-*TYPE=REPORT,  COLUMN=MRN,          SQUEEZE=0.50,  JUSTIFY=LEFT,   SIZE=8, $
+-*TYPE=REPORT,  COLUMN=RVU_WORK,     SQUEEZE=0.40,  JUSTIFY=RIGHT,  SIZE=8, $
+-*TYPE=REPORT,  COLUMN=EFF_DT,       SQUEEZE=0.60,  JUSTIFY=RIGHT,  SIZE=8, $
+-*TYPE=REPORT,  COLUMN=END_DT,       SQUEEZE=0.60,  JUSTIFY=CENTER, SIZE=8, $
+-*TYPE=REPORT,  COLUMN=NEW_WORK_RVU, SQUEEZE=0.45,  JUSTIFY=RIGHT,  SIZE=8, $
+-*TYPE=REPORT,  COLUMN=COMMENTS,     SQUEEZE=0.80,  JUSTIFY=RIGHT,  SIZE=8, $
+-*TYPE=REPORT,  COLUMN=SAME_AS,      SQUEEZE=0.40,  JUSTIFY=RIGHT,  SIZE=8, $
+-*TYPE=REPORT,  COLUMN=M_ONLY,       SQUEEZE=0.40,  JUSTIFY=CENTER, SIZE=8, $
+-*
+TYPE=TITLE,   COLOR='RGB(83 104 149)',                          $
+TYPE=TITLE,   COLUMN=BAS_RSN_CD,     JUSTIFY=CENTER,   SIZE=8,  $
+-*TYPE=TITLE,   COLUMN=DIV_SUB_DIV,  JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=PROV_NAME,    JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=RCD_CPT_CODE, JUSTIFY=CENTER,   SIZE=09, $
+-*TYPE=TITLE,   COLUMN=PROC_ID,      JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=PROC_CODE,    JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=MODS,         JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=CPT_DESC,     JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=PROC_NAME,    JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=XPOST_DATE,   JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=XSERV_DATE,   JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=MRN,          JUSTIFY=CENTER,   SIZE=11, $
+-*TYPE=TITLE,   COLUMN=RVU_WORK,     JUSTIFY=CENTER,   SIZE=09, $
+-*TYPE=TITLE,   COLUMN=EFF_DT,       JUSTIFY=CENTER,   SIZE=09, $
+-*TYPE=TITLE,   COLUMN=END_DT,       JUSTIFY=CENTER,   SIZE=09, $
+-*TYPE=TITLE,   COLUMN=NEW_WORK_RVU, JUSTIFY=CENTER,   SIZE=09, $
+-*TYPE=TITLE,   COLUMN=COMMENTS,     JUSTIFY=CENTER,   SIZE=10, $
+-*TYPE=TITLE,   COLUMN=SAME_AS,      JUSTIFY=CENTER,   SIZE=10, $
+-*TYPE=TITLE,   COLUMN=M_ONLY,       JUSTIFY=CENTER,   SIZE=10, $
+-*
+-*TYPE=DATA, BACKCOLOR='RGB(255 255 255)', MACRO=COND0003,$
+-*TYPE=DATA, BACKCOLOR='RGB(224 224 224)', MACRO=COND0002,$
+-*TYPE=DATA, BACKCOLOR='RGB(253 230 100)', MACRO=COND0001,$
+-*TYPE=DATA, BACKCOLOR='RGB(253 254 130)', MACRO=COND0004,$
+ENDSTYLE
+END
+-RUN
+END
+-EXIT
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-IF   &LINES.EVAL   EQ 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &OTLT.EVAL&OTLT_TBL.EVAL
+FILEDEF  ERABAL2 DISK C:\ibi\apps\epp2\erabal4.txt
+-RUN
+-*-----------------------------------------------------------------------------
+TABLE FILE ERABAL2
+LIST BAS_NEW_GRP_CD
+     BAS_NEW_RSN_CD
+BY   BAS_SCENARIO
+BY   BAS_GRP_CD
+BY   BAS_RSN_CD
+BY   BAS_CONTR_PYR
+BY   BAS_CHG_IND
+END
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-EXIT
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Delete all rows from &OTLT.EVAL&OTLT_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+TRUNCATE TABLE &BAS.EVAL&BAS_TBL.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL
+FILEDEF  ERABAL2 DISK C:\ibi\apps\epp2\erabal4.txt
+-RUN
+-*-----------------------------------------------------------------------------
+MODIFY FILE &BAS_TBL.EVAL
+SQL SET LOADONLY
+MATCH BAS_SCENARIO BAS_GRP_CD BAS_RSN_CD BAS_CONTR_PYR
+ON MATCH   REJECT
+ON NOMATCH INCLUDE
+FIXFORM FROM ERABAL2
+DATA ON ERABAL2
+-*LOG FORMAT ON LOGFMT MSG OFF
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL TRANS &TRANS.EVAL INPUT &INPUT.EVAL
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0           THEN GOTO ERRORS;
+-IF   &INPUT.EVAL   NE &TRANS.EVAL THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-*-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN
