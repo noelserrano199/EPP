@@ -1,0 +1,1287 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*    Programmer          Date         Description of Change
+-* ------------------  ----------   -------------------------------
+-*       WLS           01/01/2015   Original Version
+-******************************************************************************
+-*-SET &ECHO = ALL;
+SET MSG = OFF
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP/EPP_EPP3_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE&RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-*-GOTO STEP005;
+-STEP001
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Delete any duplicates for this file name
+-*-----------------------------------------------------------------------------
+SQL
+DELETE
+FROM  &DCA.EVAL&DCA_TBL.EVAL
+WHERE DCA_FILE_NAME = RTRIM('&FILE_NAME.EVAL');
+-*WHERE EXISTS
+-*      ( SELECT 1
+-*        FROM   &ISA.EVAL&ISA_TBL.EVAL
+-*              ,&IFCT.EVAL&IFCT_TBL.EVAL
+-*        WHERE  ISA_FILE_ID  <> 0
+-*          AND  IFCT_FILE_ID  = ISA_FILE_ID
+-*          AND  DCA_FILE_NAME = RTRIM(IFCT_FILE_NAME));
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Join current file to dupicate check table
+-TYPE &NOWTIME.EVAL &STEP.EVAL to find dupicate checks - Mark ST row as DUP
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,COALESCE(MIN(ISA_FILE_ID),0)     AS IFCT_FILE_ID
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD      <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = TRN_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = TRN_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = TRN_ST_SEQ_NO
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = NA_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = NA_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = NA_ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD) = 'PR'
+INNER JOIN
+      &ISA.EVAL&ISA_TBL.EVAL
+ON    ISA_FILE_ID         <> 0
+WHERE ST_EXCL_RSN_CD       = '   '
+  AND EXISTS
+      ( SELECT 1
+        FROM   &DCA.EVAL&DCA_TBL.EVAL
+        WHERE  DCA_CHECK_NO = CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+                                    AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                                        THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+                                   WHEN LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                                        THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+                                   ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END
+          AND  TO_NUMBER(DCA_CHECK_AMT)  = TO_NUMBER(RTRIM(BPR_CHK_AMT)))
+GROUP BY
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+ORDER BY
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+) ST
+ON  ( ST.ST_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO  = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO         = UT.ST_SEQ_NO )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = IFCT_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = '1'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP003
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP003';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT DISTINCT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,ERA_CHK_NO
+     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6) AS REMIT_ID
+-*     ,C.TX_ID
+     ,ERA_CHK_AMT
+     ,0-SUM(C.AMOUNT) AS MATCHED_AMOUNT
+FROM
+(
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      B.TX_ID          AS B_TX_ID
+     ,B.REFERENCE_NUMBER
+     ,SUM(B.AMOUNT)
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+FROM
+(
+SELECT DISTINCT
+      A.TX_ID           AS A_TX_ID
+     ,RTRIM(CLP_CLM_SUBMTR_ID)
+                        AS ERA_INV_NO
+     ,RTRIM(TRN_CHECK_NO)
+                        AS ERA_CHK_NO
+     ,BPR_CHK_AMT       AS ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID   = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO     = ST_SEQ_NO
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = BPR_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO  = BPR_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO      = BPR_ST_SEQ_NO
+  AND LTRIM(RTRIM(TRN_CHECK_NO),'0') IS NOT NULL
+-*  AND RTRIM(TRN_CHECK_NO) = '11701521'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO      = ST_SEQ_NO
+INNER JOIN
+      CLARITY_TDL_TRAN  A
+ON    A.INVOICE_NUMBER   = RTRIM(CLP_CLM_SUBMTR_ID)
+  AND A.DETAIL_TYPE      = 50
+WHERE ST_EXCL_RSN_CD     = '   '
+ORDER BY 2
+) T1
+INNER JOIN
+      CLARITY_TDL_TRAN  B
+ON    B.MATCH_TRX_ID     = T1.A_TX_ID
+  AND B.DETAIL_TYPE      = 32
+-*  AND B.POST_DATE       <> '04 MAY 2020'
+GROUP BY
+      B.TX_ID
+     ,B.REFERENCE_NUMBER
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+HAVING (( LTRIM(REGEXP_REPLACE(B.REFERENCE_NUMBER,'[^0-9]',''),'0')
+            = LTRIM(REGEXP_REPLACE(T1.ERA_CHK_NO,'[^0-9]',''),'0'))
+    OR  ( LTRIM(REGEXP_REPLACE(B.REFERENCE_NUMBER,'[^0-9]',''),'0')
+            = SUBSTR(LTRIM(REGEXP_REPLACE(T1.ERA_CHK_NO,'[^0-9]',''),'0'),1
+                          ,LENGTH(LTRIM(REGEXP_REPLACE(T1.ERA_CHK_NO,'[^0-9]',''),'0'))-1))
+    OR ( LTRIM(REGEXP_REPLACE(T1.ERA_CHK_NO,'[^0-9]',''),'0')
+            = SUBSTR(LTRIM(REGEXP_REPLACE(B.REFERENCE_NUMBER,'[^0-9]',''),'0'),1
+                          ,LENGTH(LTRIM(REGEXP_REPLACE(B.REFERENCE_NUMBER,'[^0-9]',''),'0'))-1))
+    OR ( B.REFERENCE_NUMBER
+            = LTRIM(SUBSTR(T1.ERA_CHK_NO,INSTR(T1.ERA_CHK_NO,'-',-1)+1,LENGTH(T1.ERA_CHK_NO)-INSTR(T1.ERA_CHK_NO,'-',-1)),'0'))
+    OR ( T1.ERA_CHK_NO
+            = LTRIM(SUBSTR(B.REFERENCE_NUMBER,INSTR(B.REFERENCE_NUMBER,'-',-1)+1,LENGTH(B.REFERENCE_NUMBER)-INSTR(B.REFERENCE_NUMBER,'-',-1)),' '))
+    OR ( T1.ERA_CHK_NO = '999999' AND SUM(B.AMOUNT) = ERA_CHK_AMT ))
+) T2
+INNER JOIN
+      CLARITY_TDL_TRAN  C
+ON    C.TX_ID            = T2.B_TX_ID
+  AND C.DETAIL_TYPE      = 2
+WHERE C.REFERENCE_NUMBER <> '27235195'
+GROUP BY
+      ERA_CHK_NO
+     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6)
+-*     ,C.TX_ID
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+HAVING SUM(C.AMOUNT) = 0-T2.ERA_CHK_AMT
+ORDER BY 1,2,3
+) ST
+ON  ( ST.ST_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO  = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO         = UT.ST_SEQ_NO
+  AND ST.ST_EPP_GEN_SEQ    = UT.ST_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = ST_ISA_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = 'A'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP004
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP004';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT DISTINCT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,ERA_CHK_NO
+-*     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6) AS REMIT_ID
+     ,ERA_CHK_AMT
+     ,0-SUM(C.AMOUNT) AS MATCHED_AMOUNT
+FROM
+(
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      B.TX_ID          AS B_TX_ID
+     ,B.REFERENCE_NUMBER
+     ,SUM(B.AMOUNT)
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+FROM
+(
+SELECT DISTINCT
+      A.TX_ID           AS A_TX_ID
+     ,RTRIM(CLP_CLM_SUBMTR_ID)
+                        AS ERA_INV_NO
+     ,RTRIM(TRN_CHECK_NO)
+                        AS ERA_CHK_NO
+     ,BPR_CHK_AMT       AS ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID      = ST_ISA_FILE_ID
+  AND RTRIM(IFCT_FILE_PAYER) IN('EDC','BOAMIXED')
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID   = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO     = ST_SEQ_NO
+  AND BPR_PMT_METHOD_CD = 'CHK'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = BPR_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO  = BPR_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO      = BPR_ST_SEQ_NO
+  AND LTRIM(RTRIM(TRN_CHECK_NO),'0') IS NOT NULL
+-*  AND RTRIM(TRN_CHECK_NO) = '8043706'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO      = ST_SEQ_NO
+INNER JOIN
+      CLARITY_TDL_TRAN  A
+ON    A.INVOICE_NUMBER   = RTRIM(CLP_CLM_SUBMTR_ID)
+  AND A.DETAIL_TYPE      = 50
+WHERE ST_EXCL_RSN_CD     = '   '
+ORDER BY 2
+) T1
+INNER JOIN
+      CLARITY_TDL_TRAN  B
+ON    B.MATCH_TRX_ID     = T1.A_TX_ID
+  AND B.DETAIL_TYPE      = 32
+  AND B.PAYMENT_SOURCE_C = 28
+  AND SUBSTR(LTRIM(B.REFERENCE_NUMBER,'0'),1,1) <> SUBSTR(LTRIM(ERA_CHK_NO,'0'),1,1)
+-*  AND B.POST_DATE       <> '05 MAY 2020'
+  AND NOT EXISTS
+   ( SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ 1
+     FROM  CLARITY_TDL_TRAN Y
+     WHERE Y.TX_ID            = B.MATCH_TRX_ID
+       AND Y.DETAIL_TYPE      = 20
+       AND Y.INSURANCE_AMOUNT = B.INSURANCE_AMOUNT )
+INNER JOIN
+      REMIT_RUN_SUM E
+ON    E.REMIT_RUN             = SUBSTR(B.TX_COMMENT, 27, 6)
+  AND (( RTRIM(IFCT_FILE_PAYER) = 'EDC'
+     AND COALESCE(SUBSTR(E.FILE_NAME,INSTR(E.FILE_NAME,'_',1,3)+1,INSTR(E.FILE_NAME,'_',1,4)-INSTR(E.FILE_NAME,'_',1,3)-1),'        ') = 'BOAMIXED' )
+   OR  ( RTRIM(IFCT_FILE_PAYER) = 'BOAMIXED'
+     AND COALESCE(SUBSTR(E.FILE_NAME,INSTR(E.FILE_NAME,'_',1,3)+1,INSTR(E.FILE_NAME,'_',1,4)-INSTR(E.FILE_NAME,'_',1,3)-1),'        ') = 'EDC' ))
+GROUP BY
+      B.TX_ID
+     ,B.REFERENCE_NUMBER
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+) T2
+INNER JOIN
+      CLARITY_TDL_TRAN  C
+ON    C.TX_ID            = T2.B_TX_ID
+  AND C.DETAIL_TYPE      = 2
+  AND TO_DATE(BPR_CHK_DT,'YYYYMMDD')-C.POST_DATE < 15
+  AND NOT EXISTS
+    ( SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ 1
+      FROM  CLARITY_TDL_TRAN X
+      WHERE X.TX_ID           = C.TX_ID
+        AND X.DETAIL_TYPE     = 11 )
+GROUP BY
+      ERA_CHK_NO
+     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6)
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+HAVING SUM(C.AMOUNT) = 0-T2.ERA_CHK_AMT
+ORDER BY 1,2,3,4
+) ST
+ON  ( ST.ST_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO  = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO         = UT.ST_SEQ_NO
+  AND ST.ST_EPP_GEN_SEQ    = UT.ST_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = ST_ISA_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = 'C'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP005
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP005';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT DISTINCT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,ERA_CHK_NO
+     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6) AS REMIT_ID
+     ,ERA_CHK_AMT
+     ,0-SUM(C.AMOUNT) AS MATCHED_AMOUNT
+FROM
+(
+SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      B.TX_ID          AS B_TX_ID
+     ,B.REFERENCE_NUMBER
+     ,SUM(B.AMOUNT)
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+					,ENTITY_NAME
+FROM
+(
+SELECT DISTINCT
+      A.TX_ID           AS A_TX_ID
+     ,RTRIM(CLP_CLM_SUBMTR_ID)
+                        AS ERA_INV_NO
+     ,RTRIM(TRN_CHECK_NO)
+                        AS ERA_CHK_NO
+     ,BPR_CHK_AMT       AS ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+					,SUBSTR(NA_N1_ENTITY_NAME,1,20) AS ENTITY_NAME
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID      = ST_ISA_FILE_ID
+  AND RTRIM(IFCT_FILE_PAYER) IN('EDC','BOAMIXED')
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID   = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO     = ST_SEQ_NO
+  AND RTRIM(BPR_PMT_METHOD_CD) IN('CC','CHK','BOP')
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = BPR_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO  = BPR_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO      = BPR_ST_SEQ_NO
+  AND LTRIM(RTRIM(TRN_CHECK_NO),'0') IS NOT NULL
+  AND SUBSTR(TRN_CHECK_NO,1,2) IN ('CC','DA','FE')
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    NA_ISA_FILE_ID       = ST_ISA_FILE_ID
+  AND NA_GS_GRP_SEQ_NO     = ST_GS_GRP_SEQ_NO
+  AND NA_ST_SEQ_NO         = ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD)     = 'PR'
+  AND SUBSTR(NA_N1_ENTITY_NAME,1,1) = 'G'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO      = ST_SEQ_NO
+INNER JOIN
+      CLARITY_TDL_TRAN  A
+ON    A.INVOICE_NUMBER   = RTRIM(CLP_CLM_SUBMTR_ID)
+  AND A.DETAIL_TYPE      = 50
+WHERE ST_EXCL_RSN_CD     = '   '
+ORDER BY 2
+) T1
+INNER JOIN
+      CLARITY_TDL_TRAN  B
+ON    B.MATCH_TRX_ID     = T1.A_TX_ID
+  AND B.DETAIL_TYPE      = 32
+  AND (( SUBSTR(B.REFERENCE_NUMBER,1,2) = 'CC'
+     AND SUBSTR(ERA_CHK_NO,1,2) IN('DA','FE'))
+   OR  ( SUBSTR(B.REFERENCE_NUMBER,1,2) IN('DA','FE')
+     AND SUBSTR(ERA_CHK_NO,1,2) = 'CC' )
+			OR  ( SUBSTR(ERA_CHK_NO,1,2) = 'CC'
+			  AND RTRIM(ENTITY_NAME)     = 'GEHA' )
+		 OR  ( RTRIM(ENTITY_NAME)     = 'GOVERNMENT EMPLOYEES'
+			  AND SUBSTR(B.REFERENCE_NUMBER,1,2) = 'CC'	)
+			OR  ( SUBSTR(ERA_CHK_NO,1,2) = 'CC'
+			  AND RTRIM(ENTITY_NAME)     = 'SCAN HEALTH' )
+		 OR  ( RTRIM(ENTITY_NAME)     = 'SCAN HEALTH'
+			  AND SUBSTR(B.REFERENCE_NUMBER,1,2) = 'CC'	)
+			OR  ( SUBSTR(ERA_CHK_NO,1,2) = 'CC'
+			  AND RTRIM(ENTITY_NAME)     = 'HORIZON' )
+		 OR  ( RTRIM(ENTITY_NAME)     = 'HORIZON'
+			  AND SUBSTR(B.REFERENCE_NUMBER,1,2) = 'CC'	))
+  AND NOT EXISTS
+   ( SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ 1
+     FROM  CLARITY_TDL_TRAN Y
+     WHERE Y.TX_ID            = B.MATCH_TRX_ID
+       AND Y.DETAIL_TYPE      = 20
+       AND Y.INSURANCE_AMOUNT = B.INSURANCE_AMOUNT )
+INNER JOIN
+      REMIT_RUN_SUM E
+ON    E.REMIT_RUN             = SUBSTR(B.TX_COMMENT, 27, 6)
+  AND (( RTRIM(IFCT_FILE_PAYER) = 'EDC'
+     AND COALESCE(SUBSTR(E.FILE_NAME,INSTR(E.FILE_NAME,'_',1,3)+1,INSTR(E.FILE_NAME,'_',1,4)-INSTR(E.FILE_NAME,'_',1,3)-1),'        ') = 'BOAMIXED' )
+   OR  ( RTRIM(IFCT_FILE_PAYER) = 'BOAMIXED'
+     AND COALESCE(SUBSTR(E.FILE_NAME,INSTR(E.FILE_NAME,'_',1,3)+1,INSTR(E.FILE_NAME,'_',1,4)-INSTR(E.FILE_NAME,'_',1,3)-1),'        ') = 'EDC' ))
+GROUP BY
+      B.TX_ID
+     ,B.REFERENCE_NUMBER
+     ,ERA_INV_NO
+     ,ERA_CHK_NO
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+     ,IFCT_FILE_PAYER
+     ,BPR_CHK_DT
+					,ENTITY_NAME
+) T2
+INNER JOIN
+      CLARITY_TDL_TRAN  C
+ON    C.TX_ID            = T2.B_TX_ID
+  AND C.DETAIL_TYPE      = 2
+  AND TO_DATE(BPR_CHK_DT,'YYYYMMDD')-C.POST_DATE < 15
+  AND NOT EXISTS
+    ( SELECT /*+ NOPARALLEL ORDERED NO_UNNEST */ 1
+      FROM  CLARITY_TDL_TRAN X
+      WHERE X.TX_ID           = C.TX_ID
+        AND X.DETAIL_TYPE     = 11 )
+GROUP BY
+      ERA_CHK_NO
+     ,C.REFERENCE_NUMBER
+     ,SUBSTR(C.TX_COMMENT,27,6)
+     ,ERA_CHK_AMT
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+HAVING SUM(C.AMOUNT) = 0-T2.ERA_CHK_AMT
+ORDER BY 1,2,3,4
+) ST
+ON  ( ST.ST_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO  = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO         = UT.ST_SEQ_NO
+  AND ST.ST_EPP_GEN_SEQ    = UT.ST_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = ST_ISA_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = 'D'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+TABLEF FILE SQLOUT
+LIST *
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP006
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP006';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT /*+ INDEX(A EPP_DCA_CHK_AMT_IDX) NOPARALLEL ORDERED NO_UNNEST */ DISTINCT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+     ,ST_EPP_GEN_SEQ
+-*     ,TRN_CHECK_NO
+-*     ,DCA_CHECK_NO
+-*     ,DCA_FILE_NAME
+-*     ,BPR_CHK_AMT
+-*     ,DCA_CHECK_AMT
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO  = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO      = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD  <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID   = BPR_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO = BPR_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO     = BPR_ST_SEQ_NO
+  AND LTRIM(TRN_CHECK_NO,' ') IS NOT NULL
+  AND LTRIM(TRN_CHECK_NO,'0') IS NOT NULL
+  AND LTRIM(REGEXP_REPLACE(TRN_CHECK_NO,'[^0-9]',''),'0') IS NOT NULL
+  AND LENGTH(LTRIM(REGEXP_REPLACE(TRN_CHECK_NO,'[^0-9]',''),'0')) > 5
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    NA_ISA_FILE_ID    = BPR_ISA_FILE_ID
+  AND NA_GS_GRP_SEQ_NO  = BPR_GS_GRP_SEQ_NO
+  AND NA_ST_SEQ_NO      = BPR_ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD) = 'PR'
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID      = ST_ISA_FILE_ID
+INNER JOIN
+      &DCA.EVAL&DCA_TBL.EVAL A
+ON    TO_NUMBER(DCA_CHECK_AMT)  = TO_NUMBER(RTRIM(BPR_CHK_AMT))
+  AND DCA_CHECK_NO             <> RTRIM(TRN_CHECK_NO)
+  AND RTRIM(DCA_FILE_NAME)     <> RTRIM(IFCT_FILE_NAME)
+  AND  (( LTRIM(REGEXP_REPLACE(DCA_CHECK_NO,'[^0-9]',''),'0')
+                = LTRIM(REGEXP_REPLACE(TRN_CHECK_NO,'[^0-9]',''),'0'))
+     OR (  LTRIM(REGEXP_REPLACE(DCA_CHECK_NO,'[^0-9]',''),'0')
+                = SUBSTR(LTRIM(REGEXP_REPLACE(RTRIM(TRN_CHECK_NO),'[^0-9]',''),'0'),1
+                       ,LENGTH(LTRIM(REGEXP_REPLACE(RTRIM(TRN_CHECK_NO),'[^0-9]',''),'0'))-1)
+       AND REGEXP_INSTR(DCA_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')=0
+       AND REGEXP_INSTR(TRN_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')=0)
+     OR ( LTRIM(REGEXP_REPLACE(RTRIM(TRN_CHECK_NO),'[^0-9]',''),'0')
+                = SUBSTR(LTRIM(REGEXP_REPLACE(RTRIM(DCA_CHECK_NO),'[^0-9]',''),'0'),1
+                          ,LENGTH(LTRIM(REGEXP_REPLACE(RTRIM(DCA_CHECK_NO),'[^0-9]',''),'0'))-1)
+       AND REGEXP_INSTR(DCA_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')=0
+       AND REGEXP_INSTR(TRN_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')=0)
+     OR ( DCA_CHECK_NO
+                = LTRIM(SUBSTR(RTRIM(TRN_CHECK_NO),INSTR(RTRIM(TRN_CHECK_NO),'-',-1)+1,LENGTH(RTRIM(TRN_CHECK_NO))-INSTR(RTRIM(TRN_CHECK_NO),'-',-1)),'0'))
+     OR ( RTRIM(TRN_CHECK_NO)
+                = LTRIM(SUBSTR(DCA_CHECK_NO,INSTR(DCA_CHECK_NO,'-',-1)+1,LENGTH(DCA_CHECK_NO)-INSTR(DCA_CHECK_NO,'-',-1)),' '))
+     OR (  REGEXP_INSTR(DCA_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')<>0
+       AND REGEXP_INSTR(TRN_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]') =0
+       AND LENGTH(RTRIM(TRN_CHECK_NO)) > 5
+       AND RTRIM(TRN_CHECK_NO) = SUBSTR(DCA_CHECK_NO,1,LENGTH(RTRIM(TRN_CHECK_NO)))
+       AND DCA_UPDT_DT+60 > CURRENT_DATE )
+     OR (  REGEXP_INSTR(TRN_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]')<>0
+       AND REGEXP_INSTR(DCA_CHECK_NO,'[A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z]') =0
+       AND LENGTH(RTRIM(DCA_CHECK_NO)) > 5
+       AND RTRIM(DCA_CHECK_NO) = SUBSTR(TRN_CHECK_NO,1,LENGTH(RTRIM(DCA_CHECK_NO)))
+       AND DCA_UPDT_DT+60 > CURRENT_DATE ))
+WHERE ST_EXCL_RSN_CD       = '   '
+  AND NOT EXISTS
+    ( SELECT 1
+      FROM  &CLP.EVAL&CLP_TBL.EVAL
+      WHERE CLP_ISA_FILE_ID   = ST_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = ST_SEQ_NO
+        AND COALESCE(SUBSTR(CLP_CLM_SUBMTR_ID,1,1),'X') = 'P' )
+ORDER BY
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+) ST
+ON  ( ST.ST_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO  = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO         = UT.ST_SEQ_NO
+  AND ST.ST_EPP_GEN_SEQ    = UT.ST_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = ST_ISA_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = 'B'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP007
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP007';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Delete any duplicates for this file name
+-*-----------------------------------------------------------------------------
+SQL
+DELETE
+FROM &DIC.EVAL&DIC_TBL.EVAL
+WHERE DIC_FILE_NAME = RTRIM('&FILE_NAME.EVAL');
+-*WHERE EXISTS
+-*      ( SELECT 1
+-*        FROM   &ISA.EVAL&ISA_TBL.EVAL
+-*              ,&IFCT.EVAL&IFCT_TBL.EVAL
+-*        WHERE  ISA_FILE_ID  <> 0
+-*          AND  IFCT_FILE_ID  = ISA_FILE_ID
+-*          AND  DIC_FILE_NAME = RTRIM(IFCT_FILE_NAME));
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP008
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP008';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Join payments in 835 file to payments in Clarity
+-**** When a match exists mark ST as "DUP"
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+     ,COALESCE(MIN(IFCT_FILE_ID),0)       AS IFCT_FILE_ID
+FROM
+(
+SELECT
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+     ,TRN_CHECK_NO
+     ,RTRIM(CLP_CLM_SUBMTR_ID)            AS CLP_CLM_SUBMTR_ID
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD      <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO = ST_SEQ_NO
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO = ST_SEQ_NO
+INNER JOIN
+      &SVC.EVAL&SVC_TBL.EVAL
+ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+  AND SVC_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+  AND SVC_ST_SEQ_NO = CLP_ST_SEQ_NO
+  AND SVC_LX_SEQ_NO          = CLP_LX_SEQ_NO
+  AND SVC_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+  AND SVC_EXCL_RSN_CD        = '   '
+WHERE ST_EXCL_RSN_CD         = '   '
+) T1
+INNER JOIN
+      &DIC.EVAL&DIC_TBL.EVAL
+ON    DIC_INVOICE_NO         = CLP_CLM_SUBMTR_ID
+  AND DIC_CHECK_NO
+      = CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+               AND  LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                   THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+            WHEN    LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                   THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+            ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END
+LEFT OUTER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    RTRIM(IFCT_FILE_NAME)= DIC_FILE_NAME
+GROUP BY
+      SVC_ISA_FILE_ID
+     ,SVC_GS_GRP_SEQ_NO
+     ,SVC_ST_SEQ_NO
+ORDER BY 1,2,3
+) ST
+ON  ( ST.SVC_ISA_FILE_ID    = UT.ST_ISA_FILE_ID
+  AND ST.SVC_GS_GRP_SEQ_NO      = UT.ST_GS_GRP_SEQ_NO
+  AND ST.SVC_ST_SEQ_NO = UT.ST_SEQ_NO )
+WHEN MATCHED THEN
+UPDATE SET
+      UT.ST_DUP_IFCT_FILE_ID = IFCT_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = '2'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP009
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP009';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Delete any duplicates for this file ID
+-*-----------------------------------------------------------------------------
+SQL
+DELETE
+FROM  &DAIC.EVAL&DAIC_TBL.EVAL
+WHERE DAIC_IFCT_FILE_ID = &FILE_ID.EVAL;
+COMMIT WORK;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP010
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP010';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &ST.EVAL&ST_TBL.EVAL UT
+USING (
+SELECT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+FROM
+(
+SELECT
+      TO_NUMBER(RTRIM(BPR_CHK_AMT))           AS CHK_AMOUNT
+     ,COALESCE(RTRIM(CLP_CLM_SUBMTR_ID), ' ') AS FST_INVC_NO
+     ,RTRIM(TRN_CHECK_NO)                     AS TRN_CHECK_NO
+     ,ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO          = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD       <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO          = ST_SEQ_NO
+  AND RTRIM(TRN_CHECK_NO)    IS NOT NULL
+LEFT OUTER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+  AND CLP_CLM_SEQ_NO         = 1
+WHERE ST_EXCL_RSN_CD         = '   '
+ORDER BY 1,2,3
+) T1
+INNER JOIN
+      &DAIC.EVAL&DAIC_TBL.EVAL
+ON    TO_NUMBER(DAIC_CHECK_AMT) = TO_NUMBER(CHK_AMOUNT)
+  AND FST_INVC_NO            IS NULL
+  AND LENGTH(DAIC_CHECK_NO)  <> LENGTH(TRN_CHECK_NO)
+  AND ((     LENGTH(DAIC_CHECK_NO) < LENGTH(TRN_CHECK_NO)
+  AND        DAIC_CHECK_NO         = SUBSTR(TRN_CHECK_NO, 1, LENGTH(DAIC_CHECK_NO)))
+    OR (     LENGTH(DAIC_CHECK_NO) > LENGTH(TRN_CHECK_NO)
+         AND TRN_CHECK_NO          = SUBSTR(DAIC_CHECK_NO, 1, LENGTH(TRN_CHECK_NO))))
+ORDER BY 1,2,3
+) ST
+ON  ( ST.ST_ISA_FILE_ID      = UT.ST_ISA_FILE_ID
+  AND ST.ST_GS_GRP_SEQ_NO    = UT.ST_GS_GRP_SEQ_NO
+  AND ST.ST_SEQ_NO           = UT.ST_SEQ_NO )
+WHEN MATCHED THEN UPDATE
+SET   UT.ST_DUP_IFCT_FILE_ID = ST_ISA_FILE_ID
+     ,UT.ST_DUP_MATCH_TYPE   = '4'
+     ,UT.ST_EXCL_RSN_CD      = 'DUP'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP011
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP011';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+SELECT
+      ST_ISA_FILE_ID
+     ,ST_GS_GRP_SEQ_NO
+     ,ST_SEQ_NO
+FROM  &ST.EVAL&ST_TBL.EVAL
+WHERE ST_EXCL_RSN_CD      = 'DUP'
+  AND ST_DUP_MATCH_TYPE   = '4'
+;
+TABLEF FILE SQLOUT
+PRINT *
+ON TABLE HOLD
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-IF   &RECORDS.EVAL   EQ 0 THEN GOTO STEP010;
+-*-----------------------------------------------------------------------------
+-STEP012
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP012';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Copy non-duplicates to &DCA.EVAL&DCA_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &DCA.EVAL&DCA_TBL.EVAL
+SELECT
+     CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' ')))  IS NOT NULL
+             AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                 THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+          WHEN   LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                 THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+          ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END                   AS CHECK_NO
+     ,COALESCE(RTRIM(BPR_CHK_AMT),'0')
+     ,COALESCE(RTRIM(CLP_CLM_SUBMTR_ID),' ')
+     ,COALESCE(RTRIM(TRN_CHECK_NO),' ')
+     ,COALESCE(RTRIM(BPR_CHK_DT),' ')
+     ,CURRENT_DATE
+     ,MAX(RTRIM(IFCT_FILE_NAME))
+     ,MAX(COALESCE(RTRIM(NA_N1_ID_CD), ' '))
+     ,MAX(COALESCE(RTRIM(NA_N1_ENTITY_NAME),' '))
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD      <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO = ST_SEQ_NO
+  AND CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+              AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                  THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+           WHEN   LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                  THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+           ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END                                 IS NOT NULL
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    NA_ISA_FILE_ID     = ST_ISA_FILE_ID
+  AND NA_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND NA_ST_SEQ_NO  = ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD) = 'PR'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO = ST_SEQ_NO
+INNER JOIN
+      &ISA.EVAL&ISA_TBL.EVAL
+ON    ISA_FILE_ID  <> 0
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID   = ISA_FILE_ID
+WHERE ST_EXCL_RSN_CD = '   '
+  AND NOT EXISTS
+  ( SELECT 1
+    FROM   &DCA.EVAL&DCA_TBL.EVAL
+    WHERE  DCA_CHECK_NO   =
+           CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+                   AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                       THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+                WHEN   LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                       THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+                ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')   END
+      AND  DCA_CHECK_AMT  = RTRIM(BPR_CHK_AMT)
+      AND  DCA_INVOICE_NO = RTRIM(CLP_CLM_SUBMTR_ID)
+      AND  DCA_ORG_CHK_NO = RTRIM(TRN_CHECK_NO)
+      AND  DCA_CHECK_DATE = RTRIM(BPR_CHK_DT)  )
+GROUP BY
+      CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' ')))  IS NOT NULL
+            AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' ')))    IS NOT NULL )
+                THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+           WHEN LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' ')))    IS NOT NULL
+                THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+           ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END
+     ,RTRIM(BPR_CHK_AMT)
+     ,RTRIM(CLP_CLM_SUBMTR_ID)
+     ,RTRIM(TRN_CHECK_NO)
+     ,RTRIM(BPR_CHK_DT)
+ORDER BY 1,2,3,4,5
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP013
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP013';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &DIC.EVAL&DIC_TBL.EVAL
+SELECT
+      CLP_CLM_SUBMTR_ID
+     ,CHECK_NO
+     ,MAX(RTRIM(BPR_CHK_DT))                                                 AS BPR_CHK_DT
+     ,MAX(COALESCE(RTRIM(NA_N1_ID_CD),' '))                                  AS NA_N1_ID_CD
+     ,MAX(RTRIM(TRN_CHECK_NO))                                               AS TRN_CHECK_NO
+     ,MAX(CURRENT_DATE)                                                      AS CURR_DATE
+     ,MAX(RTRIM(BPR_CHK_AMT))                                                AS BPR_CHK_AMT
+     ,MAX(COALESCE(RTRIM(NA_N1_ENTITY_NAME),' '))                            AS NA_N1_ENTITY_NAME
+     ,MAX(RTRIM(IFCT_FILE_NAME))                                             AS IFCT_FILE_NAME
+FROM
+(
+SELECT
+     RTRIM(CLP_CLM_SUBMTR_ID)                                                AS CLP_CLM_SUBMTR_ID
+    ,CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+             AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                 THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+           WHEN  LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                 THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+           ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END                   AS CHECK_NO
+     ,RTRIM(BPR_CHK_DT)                                                      AS BPR_CHK_DT
+     ,COALESCE(RTRIM(NA_N1_ID_CD),' ')                                       AS NA_N1_ID_CD
+     ,RTRIM(TRN_CHECK_NO)                                                    AS TRN_CHECK_NO
+     ,RTRIM(BPR_CHK_AMT)                                                     AS BPR_CHK_AMT
+     ,COALESCE(RTRIM(NA_N1_ENTITY_NAME),' ')                                 AS NA_N1_ENTITY_NAME
+     ,RTRIM(IFCT_FILE_NAME)                                                  AS IFCT_FILE_NAME
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = ST_SEQ_NO
+  AND BPR_EXCL_RSN_CD        = '   '
+  AND BPR_TXN_HANDL_CD      <> 'H'
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO = ST_SEQ_NO
+  AND CASE WHEN ( LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,2,1), ' +-.0123456789', ' '))) IS NOT NULL
+              AND LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL )
+                  THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 3, LENGTH(TRN_CHECK_NO)-2)),0)
+           WHEN   LENGTH(TRIM(TRANSLATE(SUBSTR(TRN_CHECK_NO,1,1), ' +-.0123456789', ' '))) IS NOT NULL
+                  THEN LTRIM(RTRIM(SUBSTR(TRN_CHECK_NO, 2, LENGTH(TRN_CHECK_NO)-1)),0)
+           ELSE LTRIM(RTRIM(TRN_CHECK_NO), '0')        END                                 IS NOT NULL
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    NA_ISA_FILE_ID     = ST_ISA_FILE_ID
+  AND NA_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND NA_ST_SEQ_NO  = ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD) = 'PR'
+INNER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID    = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO = ST_SEQ_NO
+  AND RTRIM(CLP_CLM_SUBMTR_ID) IS NOT NULL
+INNER JOIN
+      &ISA.EVAL&ISA_TBL.EVAL
+ON    ISA_FILE_ID  <> 0
+INNER JOIN
+      &IFCT.EVAL&IFCT_TBL.EVAL
+ON    IFCT_FILE_ID   = ISA_FILE_ID
+WHERE ST_EXCL_RSN_CD = '   '
+) T1
+WHERE NOT EXISTS
+  ( SELECT 1
+    FROM   &DIC.EVAL&DIC_TBL.EVAL
+	WHERE  DIC_INVOICE_NO = CLP_CLM_SUBMTR_ID
+      AND  DIC_CHECK_NO   = CHECK_NO )
+GROUP BY
+     CLP_CLM_SUBMTR_ID
+    ,CHECK_NO
+ORDER BY 1,2
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP014
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP014';
+-SET  &NOWTIME    = HHMMSS(A8);
+-SET  &START_TIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL Copy non-duplicates to &DCA.EVAL&DCA_TBL.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &DAIC.EVAL&DAIC_TBL.EVAL
+SELECT
+      TO_NUMBER(RTRIM(BPR_CHK_AMT))           AS DAIC_CHECK_AMT
+     ,COALESCE(RTRIM(CLP_CLM_SUBMTR_ID), ' ') AS DAIC_FST_INVC_NO
+     ,RTRIM(TRN_CHECK_NO)                     AS DAIC_CHECK_NO
+     ,ST_ISA_FILE_ID                          AS DAIC_IFCT_FILE_ID
+     ,RTRIM(TRN_CHECK_NO)                     AS DAIC_ORG_CHK_NO
+     ,COALESCE(RTRIM(BPR_CHK_DT),' ')         AS DAIC_CHECK_DATE
+     ,CURRENT_DATE                            AS DAIC_UPDT_DT
+     ,COALESCE(RTRIM(NA_N1_ID_CD), ' ')       AS DAIC_PAYER_ID_CD
+     ,MAX(COALESCE(RTRIM(NA_N1_ENTITY_NAME),' '))  AS DAIC_PAYER_NAME
+FROM  &ST.EVAL&ST_TBL.EVAL
+INNER JOIN
+      &BPR.EVAL&BPR_TBL.EVAL
+ON    BPR_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND BPR_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND BPR_ST_SEQ_NO = ST_SEQ_NO
+  AND BPR_TXN_HANDL_CD       <> 'H'
+  AND TO_NUMBER(RTRIM(BPR_CHK_AMT)) <> 0
+INNER JOIN
+      &TRN.EVAL&TRN_TBL.EVAL
+ON    TRN_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND TRN_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND TRN_ST_SEQ_NO          = ST_SEQ_NO
+  AND RTRIM(TRN_CHECK_NO)    IS NOT NULL
+INNER JOIN
+      &NA.EVAL&NA_TBL.EVAL
+ON    NA_ISA_FILE_ID         = ST_ISA_FILE_ID
+  AND NA_GS_GRP_SEQ_NO       = ST_GS_GRP_SEQ_NO
+  AND NA_ST_SEQ_NO           = ST_SEQ_NO
+  AND RTRIM(NA_N1_ENTITY_ID_CD) = 'PR'
+LEFT OUTER JOIN
+      &CLP.EVAL&CLP_TBL.EVAL
+ON    CLP_ISA_FILE_ID        = ST_ISA_FILE_ID
+  AND CLP_GS_GRP_SEQ_NO      = ST_GS_GRP_SEQ_NO
+  AND CLP_ST_SEQ_NO          = ST_SEQ_NO
+  AND CLP_CLM_SEQ_NO         = 1
+WHERE ST_EXCL_RSN_CD = '   '
+GROUP BY
+      TO_NUMBER(RTRIM(BPR_CHK_AMT))
+     ,COALESCE(RTRIM(CLP_CLM_SUBMTR_ID), ' ')
+     ,RTRIM(TRN_CHECK_NO)
+     ,ST_ISA_FILE_ID
+     ,RTRIM(TRN_CHECK_NO)
+     ,COALESCE(RTRIM(BPR_CHK_DT),' ')
+     ,CURRENT_DATE
+     ,COALESCE(RTRIM(NA_N1_ID_CD), ' ')
+-*     ,COALESCE(RTRIM(NA_N1_ENTITY_NAME),' ')
+HAVING COUNT(*) > 1
+ORDER BY 1,2,3,4
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP015
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP015';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RD1_REMOVE_CF_DUP_CHKS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP015';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP016
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP016';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RD2_REMOVE_CS_DUP_CHKS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP016';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP017
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP017';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RD3_REMOVE_TRVLRS_DUP_CHKS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP017';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP018
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP018';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RD4_REMOVE_SC_DUP_CHKS
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP018';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP019
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP019';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP_RD5_DUP_CHKS_EXCP_LST_DIG
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP019';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   '&ERROR_IND.EVAL' EQ 'ERROR'    THEN GOTO SET_FILE_STATUS;
+-IF   &FOCERRNUM.EVAL   NE 0          THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+-RUN

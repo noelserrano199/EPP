@@ -1,0 +1,1428 @@
+-******************************************************************************
+-* Program:
+-* Title:
+-* Author:       Bill Schwartz
+-* Date:
+-* Description:
+-*
+-******************************************************************************
+-* Tables Accessed:
+-* Tables Updated:
+-******************************************************************************
+-* Include/EX Files:
+-******************************************************************************
+-* Files Allocated:
+-******************************************************************************
+-* Change History:
+-*     Programmer             Date              Description of Change
+-*     ------------------  ----------           -------------------------------
+-*
+-******************************************************************************
+-*-SET &ECHO = ALL;
+-TYPE *************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL START &FOCFEXNAME.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF  &DFLTCNTL.EXISTS EQ 1 THEN GOTO STEP001;
+-******************************************************************************
+-STEP000
+-SET  &STEP       = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME    = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-TYPE &NOWTIME.EVAL *** Establish APP PATH and defaults
+-RUN
+-*-----------------------------------------------------------------------------
+-INCLUDE EPP2/EPP_DEFAULTS
+-*-----------------------------------------------------------------------------
+-SET  &STEP    = '&FOCFEXNAME.EVAL'||'.'||'STEP000';
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &FOCERRNUM.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP001
+-SET  &STEP        = '&FOCFEXNAME.EVAL'||'.'||'STEP001';
+-SET  &NOWTIME     = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+INSERT INTO &SE.EVAL&SE_TBL.EVAL
+SELECT
+      SE_ISA_FILE_ID
+     ,SE_GS_GRP_SEQ_NO
+     ,SE_ST_SEQ_NO
+     ,SE_SEQ_NO
+     ,SE_EPP_GEN_SEQ
+     ,TO_CHAR(CALC_NO_INCL_SGMTS)
+-*     ,SE_NO_INCL_SGMTS
+     ,SE_TXN_SET_CNTL_NO
+     ,SE_INCL_RSN_CD
+     ,SE_EXCL_RSN_CD
+FROM
+(
+SELECT
+       T1.SE_ISA_FILE_ID
+      ,T1.SE_GS_GRP_SEQ_NO
+      ,T1.SE_ST_SEQ_NO
+      ,T1.SE_SEQ_NO
+      ,TO_CHAR(TO_NUMBER(T1.SE_EPP_GEN_SEQ)+1)   AS SE_EPP_GEN_SEQ
+      ,T1.SE_NO_INCL_SGMTS
+      ,T1.SE_TXN_SET_CNTL_NO
+      ,TO_CHAR(  SE_CNT
+                +COALESCE(ST_CNT     ,0)
+                +COALESCE(BPR_CNT    ,0)
+                +COALESCE(TRN_CNT    ,0)
+                +COALESCE(ST_REF_CNT ,0)
+                +COALESCE(ST_DTM_CNT ,0)
+                +COALESCE(N1_CNT     ,0)
+                +COALESCE(N3_CNT     ,0)
+                +COALESCE(N4_CNT     ,0)
+                +COALESCE(NA_PER_CNT ,0)
+                +COALESCE(NA_REF_CNT ,0)
+                +COALESCE(LX_CNT     ,0)
+                +COALESCE(TS3_CNT    ,0)
+                +COALESCE(CLP_CNT    ,0)
+                +COALESCE(NM1_CNT    ,0)
+                +COALESCE(CLP_REF_CNT,0)
+                +COALESCE(CLP_DTM_CNT,0)
+                +COALESCE(CLP_PER_CNT,0)
+                +COALESCE(CLP_AMT_CNT,0)
+                +COALESCE(CLP_QTY_CNT,0)
+                +COALESCE(CLP_CAS_CNT,0)
+                +COALESCE(MIA_CNT    ,0)
+                +COALESCE(MOA_CNT    ,0)
+                +COALESCE(SVC_CNT    ,0)
+                +COALESCE(SVC_DTM_CNT,0)
+                +COALESCE(SVC_CAS_CNT,0)
+                +COALESCE(SVC_REF_CNT,0)
+                +COALESCE(SVC_AMT_CNT,0)
+                +COALESCE(SVC_QTY_CNT,0)
+                +COALESCE(LQ_CNT     ,0)
+                +COALESCE(PLB_CNT    ,0))        AS CALC_NO_INCL_SGMTS
+     ,'SEC'                                      AS SE_INCL_RSN_CD
+     ,'   '                                      AS SE_EXCL_RSN_CD
+-*-------------------------------------------------------------------
+-* Do not remove! Do not remove! Do not remove! Do not remove!
+-*-------------------------------------------------------------------
+      ,COALESCE(ST_CNT     ,0)   AS ST_CNT       /* T2   */
+      ,COALESCE(BPR_CNT    ,0)   AS BPR_CNT      /* T4   */
+      ,COALESCE(TRN_CNT    ,0)   AS TRN_CNT      /* T5   */
+      ,COALESCE(ST_REF_CNT ,0)   AS ST_REF_CNT   /* T7   */
+      ,COALESCE(ST_DTM_CNT ,0)   AS ST_DTM_CNT   /* T3   */
+      ,COALESCE(N1_CNT     ,0)   AS N1_CNT       /* T8   */
+      ,COALESCE(N3_CNT     ,0)   AS N3_CNT       /* T9   */
+      ,COALESCE(N4_CNT     ,0)   AS N4_CNT       /* T10  */
+      ,COALESCE(NA_PER_CNT ,0)   AS NA_PER_CNT   /* T11  */
+      ,COALESCE(NA_REF_CNT ,0)   AS NA_REF_CNT   /* T12  */
+      ,COALESCE(LX_CNT     ,0)   AS LX_CNT       /* T13  */
+      ,COALESCE(TS3_CNT    ,0)   AS TS3_CNT      /* T15  */
+      ,COALESCE(CLP_CNT    ,0)   AS CLP_CNT      /* T14  */
+      ,COALESCE(NM1_CNT    ,0)   AS NM1_CNT      /* T24  */
+      ,COALESCE(CLP_REF_CNT,0)   AS CLP_REF_CNT  /* T21  */
+      ,COALESCE(CLP_DTM_CNT,0)   AS CLP_DTM_CNT  /* T17  */
+      ,COALESCE(CLP_PER_CNT,0)   AS CLP_PER_CNT  /* T20  */
+      ,COALESCE(CLP_AMT_CNT,0)   AS CLP_AMT_CNT  /* T19  */
+      ,COALESCE(CLP_QTY_CNT,0)   AS CLP_QTY_CNT  /* T16  */
+      ,COALESCE(CLP_CAS_CNT,0)   AS CLP_CAS_CNT  /* T18  */
+      ,COALESCE(MIA_CNT    ,0)   AS MIA_CNT      /* T22  */
+      ,COALESCE(MOA_CNT    ,0)   AS MOA_CNT      /* T23  */
+      ,COALESCE(SVC_CNT    ,0)   AS SVC_CNT      /* T25  */
+      ,COALESCE(SVC_QTY_CNT,0)   AS SVC_QTY_CNT  /* T26  */
+      ,COALESCE(SVC_DTM_CNT,0)   AS SVC_DTM_CNT  /* T27  */
+      ,COALESCE(SVC_CAS_CNT,0)   AS SVC_CAS_CNT  /* T28  */
+      ,COALESCE(SVC_REF_CNT,0)   AS SVC_REF_CNT  /* T30  */
+      ,COALESCE(SVC_AMT_CNT,0)   AS SVC_AMT_CNT  /* T29  */
+      ,COALESCE(LQ_CNT     ,0)   AS LQ_CNT       /* T31  */
+      ,COALESCE(PLB_CNT    ,0)   AS PLB_CNT      /* T6   */
+      ,SE_CNT                                    /* T1   */
+-*-------------------------------------------------------------------
+-* Do not remove! Do not remove! Do not remove! Do not remove!
+-*-------------------------------------------------------------------
+FROM
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,SE_NO_INCL_SGMTS
+           ,SE_TXN_SET_CNTL_NO
+           ,COUNT(*)             AS SE_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      WHERE SE_EXCL_RSN_CD      = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,SE_NO_INCL_SGMTS
+           ,SE_TXN_SET_CNTL_NO ) T1
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS ST_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD   = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T2
+ON    T2.SE_ISA_FILE_ID      = T1.SE_ISA_FILE_ID
+  AND T2.SE_GS_GRP_SEQ_NO    = T1.SE_GS_GRP_SEQ_NO
+  AND T2.SE_ST_SEQ_NO        = T1.SE_ST_SEQ_NO
+  AND T2.SE_SEQ_NO           = T1.SE_SEQ_NO
+  AND T2.SE_EPP_GEN_SEQ      = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS ST_DTM_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO         = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &ST_DTM.EVAL&ST_DTM_TBL.EVAL
+      ON    ST_DTM_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_DTM_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_DTM_ST_SEQ_NO     = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T3
+ON    T3.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T3.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T3.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T3.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T3.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS BPR_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID       = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO     = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO            = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD       = '   '
+      INNER JOIN
+            &BPR.EVAL&BPR_TBL.EVAL
+      ON    BPR_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND BPR_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND BPR_ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND BPR_EXCL_RSN_CD      = '   '
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T4
+ON    T4.SE_ISA_FILE_ID          = T1.SE_ISA_FILE_ID
+  AND T4.SE_GS_GRP_SEQ_NO        = T1.SE_GS_GRP_SEQ_NO
+  AND T4.SE_ST_SEQ_NO            = T1.SE_ST_SEQ_NO
+  AND T4.SE_SEQ_NO               = T1.SE_SEQ_NO
+  AND T4.SE_EPP_GEN_SEQ          = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS TRN_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID       = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO     = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO            = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD       = '   '
+      INNER JOIN
+            &TRN.EVAL&TRN_TBL.EVAL
+      ON    TRN_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND TRN_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND TRN_ST_SEQ_NO        = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T5
+ON    T5.SE_ISA_FILE_ID          = T1.SE_ISA_FILE_ID
+  AND T5.SE_GS_GRP_SEQ_NO        = T1.SE_GS_GRP_SEQ_NO
+  AND T5.SE_ST_SEQ_NO            = T1.SE_ST_SEQ_NO
+  AND T5.SE_SEQ_NO               = T1.SE_SEQ_NO
+  AND T5.SE_EPP_GEN_SEQ          = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS PLB_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &PLB.EVAL&PLB_TBL.EVAL
+      ON    PLB_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND PLB_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND PLB_ST_SEQ_NO       = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD      = '   '
+        AND NOT EXISTS
+          ( SELECT 1
+            FROM  &CLP.EVAL&CLP_TBL.EVAL
+            WHERE CLP_ISA_FILE_ID   = ST_ISA_FILE_ID
+              AND CLP_GS_GRP_SEQ_NO = ST_GS_GRP_SEQ_NO
+              AND CLP_ST_SEQ_NO     = ST_SEQ_NO
+              AND CLP_EXCL_RSN_CD   = 'HP1' )
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T6
+ON    T6.SE_ISA_FILE_ID        = T1.SE_ISA_FILE_ID
+  AND T6.SE_GS_GRP_SEQ_NO      = T1.SE_GS_GRP_SEQ_NO
+  AND T6.SE_ST_SEQ_NO          = T1.SE_ST_SEQ_NO
+  AND T6.SE_SEQ_NO             = T1.SE_SEQ_NO
+  AND T6.SE_EPP_GEN_SEQ        = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS ST_REF_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &ST_REF.EVAL&ST_REF_TBL.EVAL
+      ON    ST_REF_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_REF_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_REF_ST_SEQ_NO     = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T7
+ON    T7.SE_ISA_FILE_ID        = T1.SE_ISA_FILE_ID
+  AND T7.SE_GS_GRP_SEQ_NO      = T1.SE_GS_GRP_SEQ_NO
+  AND T7.SE_ST_SEQ_NO          = T1.SE_ST_SEQ_NO
+  AND T7.SE_SEQ_NO             = T1.SE_SEQ_NO
+  AND T7.SE_EPP_GEN_SEQ        = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS N1_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &NA.EVAL&NA_TBL.EVAL
+      ON    NA_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND NA_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND NA_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND RTRIM(NA_N1_ENTITY_ID_CD) IS NOT NULL
+      WHERE SE_EXCL_RSN_CD    = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T8
+ON    T8.SE_ISA_FILE_ID       = T1.SE_ISA_FILE_ID
+  AND T8.SE_GS_GRP_SEQ_NO     = T1.SE_GS_GRP_SEQ_NO
+  AND T8.SE_ST_SEQ_NO         = T1.SE_ST_SEQ_NO
+  AND T8.SE_SEQ_NO            = T1.SE_SEQ_NO
+  AND T8.SE_EPP_GEN_SEQ       = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS N3_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO         = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &NA.EVAL&NA_TBL.EVAL
+      ON    NA_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND NA_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND NA_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND RTRIM(NA_N3_RT)   = 'N3'
+      WHERE SE_EXCL_RSN_CD    = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T9
+ON    T9.SE_ISA_FILE_ID      = T1.SE_ISA_FILE_ID
+  AND T9.SE_GS_GRP_SEQ_NO    = T1.SE_GS_GRP_SEQ_NO
+  AND T9.SE_ST_SEQ_NO        = T1.SE_ST_SEQ_NO
+  AND T9.SE_SEQ_NO           = T1.SE_SEQ_NO
+  AND T9.SE_EPP_GEN_SEQ      = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS N4_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO          = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &NA.EVAL&NA_TBL.EVAL
+      ON    NA_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND NA_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND NA_ST_SEQ_NO       = SE_ST_SEQ_NO
+        AND RTRIM(NA_N4_RT)    = 'N4'
+      WHERE SE_EXCL_RSN_CD     = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T10
+ON    T10.SE_ISA_FILE_ID       = T1.SE_ISA_FILE_ID
+  AND T10.SE_GS_GRP_SEQ_NO     = T1.SE_GS_GRP_SEQ_NO
+  AND T10.SE_ST_SEQ_NO         = T1.SE_ST_SEQ_NO
+  AND T10.SE_SEQ_NO            = T1.SE_SEQ_NO
+  AND T10.SE_EPP_GEN_SEQ       = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS NA_REF_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID       = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO     = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO            = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD       = '   '
+      INNER JOIN
+            &NA_REF.EVAL&NA_REF_TBL.EVAL
+      ON    NA_REF_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND NA_REF_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND NA_REF_ST_SEQ_NO     = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T11
+ON    T11.SE_ISA_FILE_ID        = T1.SE_ISA_FILE_ID
+  AND T11.SE_GS_GRP_SEQ_NO      = T1.SE_GS_GRP_SEQ_NO
+  AND T11.SE_ST_SEQ_NO          = T1.SE_ST_SEQ_NO
+  AND T11.SE_SEQ_NO             = T1.SE_SEQ_NO
+  AND T11.SE_EPP_GEN_SEQ        = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS NA_PER_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &NA_PER.EVAL&NA_PER_TBL.EVAL
+      ON    NA_PER_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND NA_PER_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND NA_PER_ST_SEQ_NO     = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD       = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T12
+ON    T12.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T12.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T12.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T12.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T12.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS LX_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &LX.EVAL&LX_TBL.EVAL
+      ON    LX_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND LX_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND LX_ST_SEQ_NO     = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD   = '   '
+	    AND EXISTS
+      ( SELECT 1
+        FROM   &CLP.EVAL&CLP_TBL.EVAL
+        WHERE  CLP_ISA_FILE_ID   = LX_ISA_FILE_ID
+          AND  CLP_GS_GRP_SEQ_NO = LX_GS_GRP_SEQ_NO
+          AND  CLP_ST_SEQ_NO     = LX_ST_SEQ_NO
+          AND  CLP_LX_SEQ_NO     = LX_SEQ_NO
+          AND  CLP_EXCL_RSN_CD   = '   ' )
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T13
+ON    T13.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T13.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T13.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T13.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T13.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    IN(' ','   ')
+      WHERE SE_EXCL_RSN_CD     = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T14
+ON    T14.SE_ISA_FILE_ID       = T1.SE_ISA_FILE_ID
+  AND T14.SE_GS_GRP_SEQ_NO     = T1.SE_GS_GRP_SEQ_NO
+  AND T14.SE_ST_SEQ_NO         = T1.SE_ST_SEQ_NO
+  AND T14.SE_SEQ_NO            = T1.SE_SEQ_NO
+  AND T14.SE_EPP_GEN_SEQ       = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS TS3_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &TS3.EVAL&TS3_TBL.EVAL
+      ON    TS3_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND TS3_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND TS3_ST_SEQ_NO       = SE_ST_SEQ_NO
+      WHERE SE_EXCL_RSN_CD      = '   '
+	  AND EXISTS
+      ( SELECT 1
+        FROM   &CLP.EVAL&CLP_TBL.EVAL
+        WHERE  CLP_ISA_FILE_ID   = TS3_ISA_FILE_ID
+          AND  CLP_GS_GRP_SEQ_NO = TS3_GS_GRP_SEQ_NO
+          AND  CLP_ST_SEQ_NO     = TS3_ST_SEQ_NO
+          AND  CLP_LX_SEQ_NO     = TS3_LX_SEQ_NO
+          AND  CLP_EXCL_RSN_CD   = '   ' )
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T15
+ON    T15.SE_ISA_FILE_ID   = T1.SE_ISA_FILE_ID
+  AND T15.SE_GS_GRP_SEQ_NO = T1.SE_GS_GRP_SEQ_NO
+  AND T15.SE_ST_SEQ_NO     = T1.SE_ST_SEQ_NO
+  AND T15.SE_SEQ_NO        = T1.SE_SEQ_NO
+  AND T15.SE_EPP_GEN_SEQ   = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_QTY_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP_QTY.EVAL&CLP_QTY_TBL.EVAL
+      ON    CLP_QTY_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND CLP_QTY_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND CLP_QTY_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND CLP_QTY_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND CLP_QTY_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND CLP_QTY_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD         = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T16
+ON    T16.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T16.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T16.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T16.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T16.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_DTM_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP_DTM.EVAL&CLP_DTM_TBL.EVAL
+      ON    CLP_DTM_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND CLP_DTM_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND CLP_DTM_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND CLP_DTM_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND CLP_DTM_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND CLP_DTM_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD         = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T17
+ON    T17.SE_ISA_FILE_ID     = T1.SE_ISA_FILE_ID
+  AND T17.SE_GS_GRP_SEQ_NO   = T1.SE_GS_GRP_SEQ_NO
+  AND T17.SE_ST_SEQ_NO       = T1.SE_ST_SEQ_NO
+  AND T17.SE_SEQ_NO          = T1.SE_SEQ_NO
+  AND T17.SE_EPP_GEN_SEQ     = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_CAS_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &CLP_CAS.EVAL&CLP_CAS_TBL.EVAL
+      ON    CLP_CAS_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND CLP_CAS_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND CLP_CAS_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND CLP_CAS_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND CLP_CAS_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND CLP_CAS_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T18
+ON    T18.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T18.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T18.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T18.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T18.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_AMT_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO       = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &CLP_AMT.EVAL&CLP_AMT_TBL.EVAL
+      ON    CLP_AMT_ISA_FILE_ID   = CLP_ISA_FILE_ID
+        AND CLP_AMT_GS_GRP_SEQ_NO = CLP_GS_GRP_SEQ_NO
+        AND CLP_AMT_ST_SEQ_NO     = CLP_ST_SEQ_NO
+        AND CLP_AMT_LX_SEQ_NO     = CLP_LX_SEQ_NO
+        AND CLP_AMT_CLP_CLM_SEQ_NO= CLP_CLM_SEQ_NO
+        AND CLP_AMT_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T19
+ON    T19.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T19.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T19.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T19.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T19.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_PER_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO         = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP_PER.EVAL&CLP_PER_TBL.EVAL
+      ON    CLP_PER_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND CLP_PER_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND CLP_PER_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND CLP_PER_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND CLP_PER_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND CLP_PER_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD         = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T20
+ON    T20.SE_ISA_FILE_ID       = T1.SE_ISA_FILE_ID
+  AND T20.SE_GS_GRP_SEQ_NO     = T1.SE_GS_GRP_SEQ_NO
+  AND T20.SE_ST_SEQ_NO         = T1.SE_ST_SEQ_NO
+  AND T20.SE_SEQ_NO            = T1.SE_SEQ_NO
+  AND T20.SE_EPP_GEN_SEQ       = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS CLP_REF_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID  = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO       = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &CLP_REF.EVAL&CLP_REF_TBL.EVAL
+      ON    CLP_REF_ISA_FILE_ID   = CLP_ISA_FILE_ID
+        AND CLP_REF_GS_GRP_SEQ_NO = CLP_GS_GRP_SEQ_NO
+        AND CLP_REF_ST_SEQ_NO     = CLP_ST_SEQ_NO
+        AND CLP_REF_LX_SEQ_NO     = CLP_LX_SEQ_NO
+        AND CLP_REF_CLP_CLM_SEQ_NO= CLP_CLM_SEQ_NO
+        AND CLP_REF_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T21
+ON    T21.SE_ISA_FILE_ID     = T1.SE_ISA_FILE_ID
+  AND T21.SE_GS_GRP_SEQ_NO   = T1.SE_GS_GRP_SEQ_NO
+  AND T21.SE_ST_SEQ_NO       = T1.SE_ST_SEQ_NO
+  AND T21.SE_SEQ_NO          = T1.SE_SEQ_NO
+  AND T21.SE_EPP_GEN_SEQ     = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS MIA_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &MIA.EVAL&MIA_TBL.EVAL
+      ON    MIA_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND MIA_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND MIA_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND MIA_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND MIA_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND MIA_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD     = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T22
+ON    T22.SE_ISA_FILE_ID   = T1.SE_ISA_FILE_ID
+  AND T22.SE_GS_GRP_SEQ_NO = T1.SE_GS_GRP_SEQ_NO
+  AND T22.SE_ST_SEQ_NO     = T1.SE_ST_SEQ_NO
+  AND T22.SE_SEQ_NO        = T1.SE_SEQ_NO
+  AND T22.SE_EPP_GEN_SEQ   = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS MOA_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &MOA.EVAL&MOA_TBL.EVAL
+      ON    MOA_ISA_FILE_ID   = CLP_ISA_FILE_ID
+        AND MOA_GS_GRP_SEQ_NO = CLP_GS_GRP_SEQ_NO
+        AND MOA_ST_SEQ_NO     = CLP_ST_SEQ_NO
+        AND MOA_LX_SEQ_NO     = CLP_LX_SEQ_NO
+        AND MOA_CLP_CLM_SEQ_NO= CLP_CLM_SEQ_NO
+        AND MOA_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD    = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T23
+ON    T23.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T23.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T23.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T23.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T23.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS NM1_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO         = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO     = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &NM1.EVAL&NM1_TBL.EVAL
+      ON    NM1_ISA_FILE_ID   = CLP_ISA_FILE_ID
+        AND NM1_GS_GRP_SEQ_NO = CLP_GS_GRP_SEQ_NO
+        AND NM1_ST_SEQ_NO     = CLP_ST_SEQ_NO
+        AND NM1_LX_SEQ_NO     = CLP_LX_SEQ_NO
+        AND NM1_CLP_CLM_SEQ_NO= CLP_CLM_SEQ_NO
+        AND NM1_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD    = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T24
+ON    T24.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T24.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T24.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T24.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T24.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO          = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    IN(' ','   ')
+      WHERE ST_EXCL_RSN_CD     = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T25
+ON    T25.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T25.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T25.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T25.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T25.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_QTY_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO          = SE_ST_SEQ_NO
+        AND ST_SEQ_NO          = SE_SEQ_NO
+        AND ST_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC_QTY.EVAL&SVC_QTY_TBL.EVAL
+      ON    SVC_QTY_ISA_FILE_ID   = SVC_ISA_FILE_ID
+        AND SVC_QTY_GS_GRP_SEQ_NO = SVC_GS_GRP_SEQ_NO
+        AND SVC_QTY_ST_SEQ_NO     = SVC_ST_SEQ_NO
+        AND SVC_QTY_LX_SEQ_NO     = SVC_LX_SEQ_NO
+        AND SVC_QTY_CLP_CLM_SEQ_NO= SVC_CLP_CLM_SEQ_NO
+        AND SVC_QTY_SVC_SEQ_NO    = SVC_SEQ_NO
+        AND SVC_QTY_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T26
+ON    T26.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T26.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T26.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T26.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T26.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_DTM_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO         = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC_DTM.EVAL&SVC_DTM_TBL.EVAL
+      ON    SVC_DTM_ISA_FILE_ID    = SVC_ISA_FILE_ID
+        AND SVC_DTM_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+        AND SVC_DTM_ST_SEQ_NO      = SVC_ST_SEQ_NO
+        AND SVC_DTM_LX_SEQ_NO      = SVC_LX_SEQ_NO
+        AND SVC_DTM_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+        AND SVC_DTM_SVC_SEQ_NO     = SVC_SEQ_NO
+        AND SVC_DTM_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD         = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T27
+ON    T27.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T27.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T27.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T27.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T27.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_CAS_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID      = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO    = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO           = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD      = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID     = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO   = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO       = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD     = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID        = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO      = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO          = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO          = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO     = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD        = '   '
+      INNER JOIN
+            &SVC_CAS.EVAL&SVC_CAS_TBL.EVAL
+      ON    SVC_CAS_ISA_FILE_ID    = SVC_ISA_FILE_ID
+        AND SVC_CAS_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+        AND SVC_CAS_ST_SEQ_NO      = SVC_ST_SEQ_NO
+        AND SVC_CAS_LX_SEQ_NO      = SVC_LX_SEQ_NO
+        AND SVC_CAS_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+        AND SVC_CAS_SVC_SEQ_NO     = SVC_SEQ_NO
+        AND SVC_CAS_EXCL_RSN_CD    IN(' ','   ')
+      WHERE SE_EXCL_RSN_CD         = '   '
+        AND NOT
+          (     RTRIM(SVC_CAS_CLM_ADJ_GRP_CD1)              = 'CO'
+            AND CAST( SVC_CAS_CLM_ADJ_AMT1 AS DECIMAL(9,2)) = 0
+            AND RTRIM(SVC_CAS_CLM_ADJ_AMT2)                 IS NULL
+            AND RTRIM(SVC_CAS_CLM_ADJ_AMT3)                 IS NULL
+            AND RTRIM(SVC_CAS_CLM_ADJ_AMT4)                 IS NULL
+            AND RTRIM(SVC_CAS_CLM_ADJ_AMT5)                 IS NULL
+            AND RTRIM(SVC_CAS_CLM_ADJ_AMT6)                 IS NULL )
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T28
+ON    T28.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T28.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T28.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T28.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T28.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_AMT_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID  = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO= SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO       = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD  = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC_AMT.EVAL&SVC_AMT_TBL.EVAL
+      ON    SVC_AMT_ISA_FILE_ID   = SVC_ISA_FILE_ID
+        AND SVC_AMT_GS_GRP_SEQ_NO = SVC_GS_GRP_SEQ_NO
+        AND SVC_AMT_ST_SEQ_NO     = SVC_ST_SEQ_NO
+        AND SVC_AMT_LX_SEQ_NO     = SVC_LX_SEQ_NO
+        AND SVC_AMT_CLP_CLM_SEQ_NO= SVC_CLP_CLM_SEQ_NO
+        AND SVC_AMT_SVC_SEQ_NO    = SVC_SEQ_NO
+        AND SVC_AMT_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T29
+ON    T29.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T29.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T29.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T29.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T29.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS SVC_REF_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC_REF.EVAL&SVC_REF_TBL.EVAL
+      ON    SVC_REF_ISA_FILE_ID   = SVC_ISA_FILE_ID
+        AND SVC_REF_GS_GRP_SEQ_NO = SVC_GS_GRP_SEQ_NO
+        AND SVC_REF_ST_SEQ_NO     = SVC_ST_SEQ_NO
+        AND SVC_REF_LX_SEQ_NO     = SVC_LX_SEQ_NO
+        AND SVC_REF_CLP_CLM_SEQ_NO= SVC_CLP_CLM_SEQ_NO
+        AND SVC_REF_SVC_SEQ_NO    = SVC_SEQ_NO
+        AND SVC_REF_EXCL_RSN_CD   = '   '
+      WHERE SE_EXCL_RSN_CD        = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T30
+ON    T30.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T30.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T30.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T30.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T30.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+LEFT OUTER JOIN
+    ( SELECT
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ
+           ,COUNT(*)             AS LQ_CNT
+      FROM  &SE.EVAL&SE_TBL.EVAL
+      INNER JOIN
+            &ST.EVAL&ST_TBL.EVAL
+      ON    ST_ISA_FILE_ID   = SE_ISA_FILE_ID
+        AND ST_GS_GRP_SEQ_NO = SE_GS_GRP_SEQ_NO
+        AND ST_SEQ_NO        = SE_ST_SEQ_NO
+        AND ST_EXCL_RSN_CD   = '   '
+      INNER JOIN
+            &CLP.EVAL&CLP_TBL.EVAL
+      ON    CLP_ISA_FILE_ID    = SE_ISA_FILE_ID
+        AND CLP_GS_GRP_SEQ_NO  = SE_GS_GRP_SEQ_NO
+        AND CLP_ST_SEQ_NO      = SE_ST_SEQ_NO
+        AND CLP_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &SVC.EVAL&SVC_TBL.EVAL
+      ON    SVC_ISA_FILE_ID    = CLP_ISA_FILE_ID
+        AND SVC_GS_GRP_SEQ_NO  = CLP_GS_GRP_SEQ_NO
+        AND SVC_ST_SEQ_NO      = CLP_ST_SEQ_NO
+        AND SVC_LX_SEQ_NO      = CLP_LX_SEQ_NO
+        AND SVC_CLP_CLM_SEQ_NO = CLP_CLM_SEQ_NO
+        AND SVC_EXCL_RSN_CD    = '   '
+      INNER JOIN
+            &LQ.EVAL&LQ_TBL.EVAL
+      ON    LQ_ISA_FILE_ID    = SVC_ISA_FILE_ID
+        AND LQ_GS_GRP_SEQ_NO  = SVC_GS_GRP_SEQ_NO
+        AND LQ_ST_SEQ_NO      = SVC_ST_SEQ_NO
+        AND LQ_LX_SEQ_NO      = SVC_LX_SEQ_NO
+        AND LQ_CLP_CLM_SEQ_NO = SVC_CLP_CLM_SEQ_NO
+        AND LQ_SVC_SEQ_NO     = SVC_SEQ_NO
+        AND LQ_EXCL_RSN_CD    = '   '
+      WHERE SE_EXCL_RSN_CD    = '   '
+      GROUP BY
+            SE_ISA_FILE_ID
+           ,SE_GS_GRP_SEQ_NO
+           ,SE_ST_SEQ_NO
+           ,SE_SEQ_NO
+           ,SE_EPP_GEN_SEQ ) T31
+ON    T31.SE_ISA_FILE_ID    = T1.SE_ISA_FILE_ID
+  AND T31.SE_GS_GRP_SEQ_NO  = T1.SE_GS_GRP_SEQ_NO
+  AND T31.SE_ST_SEQ_NO      = T1.SE_ST_SEQ_NO
+  AND T31.SE_SEQ_NO         = T1.SE_SEQ_NO
+  AND T31.SE_EPP_GEN_SEQ    = T1.SE_EPP_GEN_SEQ
+ORDER BY 1,2,3,4,5
+)
+WHERE SE_EPP_GEN_SEQ       <> CALC_NO_INCL_SGMTS
+ORDER BY 1,2,3,4,5
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-STEP002
+-SET  &STEP        = '&FOCFEXNAME.EVAL'||'.'||'STEP002';
+-SET  &NOWTIME     = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL
+-*-----------------------------------------------------------------------------
+SQL
+MERGE INTO &SE.EVAL&SE_TBL.EVAL UT
+USING (
+SELECT
+      SE2.SE_ISA_FILE_ID
+     ,SE2.SE_GS_GRP_SEQ_NO
+     ,SE2.SE_ST_SEQ_NO
+     ,SE2.SE_SEQ_NO
+     ,SE2.SE_EPP_GEN_SEQ
+FROM  &SE.EVAL&SE_TBL.EVAL SE1
+INNER JOIN
+      &SE.EVAL&SE_TBL.EVAL SE2
+ON    SE2.SE_ISA_FILE_ID     = SE1.SE_ISA_FILE_ID
+  AND SE2.SE_GS_GRP_SEQ_NO   = SE1.SE_GS_GRP_SEQ_NO
+  AND SE2.SE_ST_SEQ_NO       = SE1.SE_ST_SEQ_NO
+  AND SE2.SE_SEQ_NO          = SE1.SE_SEQ_NO
+  AND SE2.SE_INCL_RSN_CD    <> 'SEC'
+  AND SE2.SE_EXCL_RSN_CD     = '   '
+WHERE SE1.SE_INCL_RSN_CD     = 'SEC'
+) ST
+ON  ( UT.SE_ISA_FILE_ID      = ST.SE_ISA_FILE_ID
+  AND UT.SE_GS_GRP_SEQ_NO    = ST.SE_GS_GRP_SEQ_NO
+  AND UT.SE_ST_SEQ_NO        = ST.SE_ST_SEQ_NO
+  AND UT.SE_SEQ_NO           = ST.SE_SEQ_NO
+  AND UT.SE_EPP_GEN_SEQ      = ST.SE_EPP_GEN_SEQ )
+WHEN MATCHED THEN
+UPDATE SET UT.SE_EXCL_RSN_CD = 'SEC'
+;
+END
+-RUN
+-*-----------------------------------------------------------------------------
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL &STEP.EVAL COMPLETE RETCODE &RETCODE.EVAL
+-TYPE -------------------------------------------------------------------------
+-IF   &RETCODE.EVAL NE 0 THEN GOTO ERRORS;
+-*-----------------------------------------------------------------------------
+-GOTO THE_END;
+-TYPE -------------------------------------------------------------------------
+-ERRORS
+-SET &ERRFEXNAME = '&FOCFEXNAME.EVAL';
+-SET &ERRSTEP    = '&STEP.EVAL';
+-SET &ERRRETCODE = &RETCODE.EVAL;
+-SET &ERRLINES   = &LINES.EVAL;
+-SET &ERRFOCERR  = &FOCERRNUM.EVAL;
+-SET &ERROR_IND  = 'ERROR';
+-RUN
+-INCLUDE GBL_ERRORS
+-******************************************************************************
+-THE_END
+-******************************************************************************
+-SET  &NOWTIME = HHMMSS(A8);
+-TYPE &NOWTIME.EVAL FINISH &FOCFEXNAME.EVAL
+-TYPE *************************************************************************
+ 
