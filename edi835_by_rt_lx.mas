@@ -1,0 +1,279 @@
+FILENAME=D835,                      SUFFIX=FIX,
+$ Interchange Control Header
+SEGNAME=ISA,                                           SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=ISA_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=ISA, $
+    FIELD=ISA_AUTH_INFO_QLFR,       ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=ISA_AUTH_INFO,            ALIAS=,            USAGE=A10,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=ISA_SECUR_INFO_QLFR,      ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=ISA_SECUR_INFO,           ALIAS=,            USAGE=A10,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=ISA_IC_SNDR_ID_QLFR,      ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=ISA_IC_SNDR_ID,           ALIAS=,            USAGE=A15,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=ISA_IC_RCVR_ID_QLFR,      ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=ISA_IC_RCVR_ID,           ALIAS=,            USAGE=A15,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=ISA_IC_DATE,              ALIAS=,            USAGE=A06,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=ISA_IC_TIME,              ALIAS=,            USAGE=A04,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=ISA_IC_CNTL_STD_ID,       ALIAS=,            USAGE=A02,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=ISA_IC_CNTL_VER_NO,       ALIAS=,            USAGE=A05,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=ISA_IC_CNTL_NO,           ALIAS=,            USAGE=A09,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=ISA_ACK_RQST,             ALIAS=,            USAGE=A01,     ACTUAL=A018,  MISSING=ON,   $ 14
+    FIELD=ISA_TST_IND,              ALIAS=,            USAGE=A01,     ACTUAL=A035,  MISSING=ON,   $ 15
+    FIELD=ISA_COMPO_SUPLMNT,        ALIAS=,            USAGE=A01,     ACTUAL=A018,  MISSING=ON,   $ 16
+$ Functional Group Header
+SEGNAME=GS,                         PARENT=ISA,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=GS_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=GS,  $
+    FIELD=GS_FUNC_ID_CD,            ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=GS_APP_SNDER_CD,          ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=GS_APP_RCVR_CD,           ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=GS_FIL_CREAT_DT,          ALIAS=,            USAGE=A8YYMD,  ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=GS_FIL_CREAT_TM,          ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=GS_GRP_CNTL_NO,           ALIAS=,            USAGE=A09,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=GS_RESP_AGENCY_CD,        ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=GS_VER_REL_CD,            ALIAS=,            USAGE=A12,     ACTUAL=A256,  MISSING=ON,   $ 08
+$ Transaction Set Header
+SEGNAME=ST,                         PARENT=GS,         SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=ST_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=ST,  $
+    FIELD=ST_TXN_SET_ID_CD,         ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=ST_TXN_SET_CNTL_NO,       ALIAS=,            USAGE=A09,     ACTUAL=A080,  MISSING=ON,   $ 02
+$ LX - Header Number
+SEGNAME=LX,                         PARENT=ST,         SEGTYPE=S0,                                 $
+    FIELD=RECTYPE,                  ALIAS=LX_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=LX,  $
+    FIELD=LX_ASGND_NO,              ALIAS=,            USAGE=A06,     ACTUAL=A055,  MISSING=ON,   $ 01
+$ TS3 - Provider Summary Info
+SEGNAME=TS3,                        PARENT=LX,         SEGTYPE=S0,                                 $
+    FIELD=RECTYPE,                  ALIAS=TS3_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=TS3, $
+    FIELD=TS3_REF_ID,               ALIAS=,            USAGE=A50,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=TS3_FACILITY_CD,          ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=TS3_DATE,                 ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=TS3_QTY01,                ALIAS=,            USAGE=A15,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=TS3_AMT01,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=TS3_AMT02,                ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=TS3_AMT03,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=TS3_AMT04,                ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=TS3_AMT05,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=TS3_AMT06,                ALIAS=,            USAGE=A18,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=TS3_AMT07,                ALIAS=,            USAGE=A18,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=TS3_AMT08,                ALIAS=,            USAGE=A18,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=TS3_AMT09,                ALIAS=,            USAGE=A18,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=TS3_AMT10,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 14
+    FIELD=TS3_AMT11,                ALIAS=,            USAGE=A35,     ACTUAL=A035,  MISSING=ON,   $ 15
+    FIELD=TS3_AMT12,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 16
+    FIELD=TS3_AMT13,                ALIAS=,            USAGE=A18,     ACTUAL=A030,  MISSING=ON,   $ 17
+    FIELD=TS3_AMT14,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 18
+    FIELD=TS3_AMT15,                ALIAS=,            USAGE=A18,     ACTUAL=A030,  MISSING=ON,   $ 19
+    FIELD=TS3_AMT16,                ALIAS=,            USAGE=A18,     ACTUAL=A030,  MISSING=ON,   $ 20
+    FIELD=TS3_AMT17,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 21
+    FIELD=TS3_AMT18,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 22
+    FIELD=TS3_QTY02,                ALIAS=,            USAGE=A15,     ACTUAL=A030,  MISSING=ON,   $ 23
+    FIELD=TS3_AMT19,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 24
+$ CLP - Claim Payment Info
+SEGNAME=CLP,                        PARENT=LX,         SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=CLP_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLP, $
+    FIELD=CLP_CLM_SUBMTR_ID,        ALIAS=,            USAGE=A38,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_CLM_STATUS_CD,        ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_TOT_CLM_CRG_AMT,      ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=CLP_CLM_PYMT_AMT,         ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=CLP_PT_RESP_AMT,          ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=CLP_CLM_FIL_ID_CD,        ALIAS=,            USAGE=A02,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=CLP_PYR_CLM_CNTL_NO,      ALIAS=,            USAGE=A30,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=CLP_FCLTY_CD_VALU,        ALIAS=,            USAGE=A02,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=CLP_CLM_FREQ_TYP_CD,      ALIAS=,            USAGE=A01,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=CLP_PT_STS_CD,            ALIAS=,            USAGE=A02,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=CLP_DRG_CD,               ALIAS=,            USAGE=A04,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=CLP_QTY,                  ALIAS=,            USAGE=A15,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=CLP_PCT,                  ALIAS=,            USAGE=A10,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=CLP_YN_COND_RESP_CD,      ALIAS=,            USAGE=A01,     ACTUAL=A018,  MISSING=ON,   $ 14
+$ NM1 - Patient Name
+SEGNAME=NM1,                        PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=NM1_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=NM1,$
+    FIELD=NM1_ENTITY_ID_CD,         ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=NM1_ENTITY_TYP_QLFR,      ALIAS=,            USAGE=A01,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=NM1_PT_LST_NM,            ALIAS=,            USAGE=A60,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=NM1_PT_FST_NM,            ALIAS=,            USAGE=A60,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=NM1_PT_MID_NM,            ALIAS=,            USAGE=A60,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=NM1_PT_NM_PRFX,           ALIAS=,            USAGE=A10,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=NM1_PT_NM_SFX,            ALIAS=,            USAGE=A10,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=NM1_INS_ID_CD_QLFR,       ALIAS=,            USAGE=A02,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=NM1_INS_ID_CD,            ALIAS=,            USAGE=A80,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=NM1_ENTITY_REL_CD,        ALIAS=,            USAGE=A02,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=NM1_ENTITY_ID_CD2,        ALIAS=,            USAGE=A03,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=NM1_ORG_NM,               ALIAS=,            USAGE=A60,     ACTUAL=A060,  MISSING=ON,   $ 12
+$ PER - Payer/Payee Contact Info
+SEGNAME=CLP_PER,                    PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=CLP_PER_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPP, $
+    FIELD=CLP_PER_CONTACT_FUNC_CD,  ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_PER_CONTACT_NAME,     ALIAS=,            USAGE=A60,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_PER_COM_NO_QLFR,      ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=CLP_PER_COM_NO,           ALIAS=,            USAGE=A254,    ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=CLP_PER_COM_NO_QLFR2,     ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=CLP_PER_COM_NO2,          ALIAS=,            USAGE=A254,    ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=CLP_PER_COM_NO_QLFR3,     ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=CLP_PER_COM_NO3,          ALIAS=,            USAGE=A252,    ACTUAL=A256,  MISSING=ON,   $ 08
+$  AMT - Claim Supplemental Amount
+SEGNAME=CLP_AMT,                    PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=CLP_AMT_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPA,$
+    FIELD=CLP_AMT_QLFR_CD,          ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_AMT_SUPPLMNTL_AMT,    ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_AMT_CRDT_DBT_FLAG,    ALIAS=,            USAGE=A01,     ACTUAL=A080,  MISSING=ON,   $ 03
+$  CLP CAS - Claim Adjust Claim Level
+SEGNAME=CLP_CAS,                    PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=CLP_CAS_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPC,$
+    FIELD=CLP_CAS_CLM_ADJ_GRP_CD1,  ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD1,  ALIAS=,            USAGE=A05,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_CAS_CLM_ADJ_AMT1,     ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=CLP_CAS_CLM_ADJ_QTY1,     ALIAS=,            USAGE=A15,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD2,  ALIAS=,            USAGE=A05,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=CLP_CAS_CLM_ADJ_AMT2,     ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=CLP_CAS_CLM_ADJ_QTY2,     ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD3,  ALIAS=,            USAGE=A05,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=CLP_CAS_CLM_ADJ_AMT3,     ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=CLP_CAS_CLM_ADJ_QTY3,     ALIAS=,            USAGE=A15,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD4,  ALIAS=,            USAGE=A05,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=CLP_CAS_CLM_ADJ_AMT4,     ALIAS=,            USAGE=A18,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=CLP_CAS_CLM_ADJ_QTY4,     ALIAS=,            USAGE=A15,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD5,  ALIAS=,            USAGE=A05,     ACTUAL=A018,  MISSING=ON,   $ 14
+    FIELD=CLP_CAS_CLM_ADJ_AMT5,     ALIAS=,            USAGE=A18,     ACTUAL=A035,  MISSING=ON,   $ 15
+    FIELD=CLP_CAS_CLM_ADJ_QTY5,     ALIAS=,            USAGE=A15,     ACTUAL=A018,  MISSING=ON,   $ 16
+    FIELD=CLP_CAS_CLM_ADJ_RSN_CD6,  ALIAS=,            USAGE=A05,     ACTUAL=A030,  MISSING=ON,   $ 17
+    FIELD=CLP_CAS_CLM_ADJ_AMT6,     ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 18
+    FIELD=CLP_CAS_CLM_ADJ_QTY6,     ALIAS=,            USAGE=A15,     ACTUAL=A030,  MISSING=ON,   $ 19
+$  DTM Production Date
+SEGNAME=CLP_DTM,                    PARENT=CLP,        SEGTYPE=S0,                                 $
+    FIELD=RECTYPE,                  ALIAS=CLP_DTM_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPD,$
+    FIELD=CLP_DTM_DTTM_QLFR,        ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_DTM_DATE,             ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_DTM_TIME,             ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=CLP_DTM_TIME_CD,          ALIAS=,            USAGE=A02,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=CLP_DTM_DTTM_PD_FMT_QLFR, ALIAS=,            USAGE=A03,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=CLP_DTM_DTTM_PD,          ALIAS=,            USAGE=A35,     ACTUAL=A256,  MISSING=ON,   $ 06
+$ CLP_REF - Additional Info
+SEGNAME=CLP_REF,                    PARENT=CLP,        SEGTYPE=S0,                                 $
+    FIELD=RECTYPE,                  ALIAS=CLP_REF_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPR, $
+    FIELD=CLP_REF_ID_QLFR,          ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_REF_ID,               ALIAS=,            USAGE=A50,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=CLP_REF_DESC,             ALIAS=,            USAGE=A80,     ACTUAL=A080,  MISSING=ON,   $ 03
+$ CLP_QTY Claim Supplemental Information Quantity
+SEGNAME=CLP_QTY,                    PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=CLP_QTY_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=CLPQ, $
+    FIELD=CLP_QTY_QLFR_CD,          ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=CLP_QTY_QUANTITY,         ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 02
+-*    FIELD=QTY_COMP_UOM,             ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 03
+-*    FIELD=QTY_FREE_FORM_MSG         ALIAS=,            USAGE=A30,     ACTUAL=A256,  MISSING=ON,   $ 04
+$ MIA - Inpatient Adjudication Information
+SEGNAME=MIA,                        PARENT=CLP,        SEGTYPE=U,                                 $
+    FIELD=RECTYPE,                  ALIAS=MIA_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=MIA,  $
+    FIELD=MIA_QTY01,                ALIAS=,            USAGE=A15,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=MIA_AMT01,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=MIA_QTY02,                ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=MIA_AMT02,                ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=MIA_REF_ID01,             ALIAS=,            USAGE=A50,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=MIA_AMT03,                ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=MIA_AMT04,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=MIA_AMT05,                ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=MIA_AMT06,                ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=MIA_AMT07,                ALIAS=,            USAGE=A18,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=MIA_AMT08,                ALIAS=,            USAGE=A18,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=MIA_AMT09,                ALIAS=,            USAGE=A18,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=MIA_AMT10,                ALIAS=,            USAGE=A18,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=MIA_AMT11,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 14
+    FIELD=MIA_QTY03,                ALIAS=,            USAGE=A15,     ACTUAL=A035,  MISSING=ON,   $ 15
+    FIELD=MIA_AMT12,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 16
+    FIELD=MIA_AMT13,                ALIAS=,            USAGE=A18,     ACTUAL=A030,  MISSING=ON,   $ 17
+    FIELD=MIA_AMT14,                ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 18
+    FIELD=MIA_AMT15,                ALIAS=,            USAGE=A18,     ACTUAL=A030,  MISSING=ON,   $ 19
+    FIELD=MIA_REF_ID02,             ALIAS=,            USAGE=A50,     ACTUAL=A050,  MISSING=ON,   $ 20
+    FIELD=MIA_REF_ID03,             ALIAS=,            USAGE=A50,     ACTUAL=A050,  MISSING=ON,   $ 21
+    FIELD=MIA_REF_ID04,             ALIAS=,            USAGE=A50,     ACTUAL=A050,  MISSING=ON,   $ 22
+    FIELD=MIA_REF_ID05,             ALIAS=,            USAGE=A50,     ACTUAL=A050,  MISSING=ON,   $ 23
+    FIELD=MIA_AMT16,                ALIAS=,            USAGE=A15,     ACTUAL=A018,  MISSING=ON,   $ 24
+$ MOA - Outpatient Adjudication Information
+SEGNAME=MOA,                        PARENT=CLP,        SEGTYPE=U,                                 $
+    FIELD=RECTYPE,                  ALIAS=MOA_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=MOA,$
+    FIELD=MOA_REIMBURES_RATE,       ALIAS=,            USAGE=A10,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=MOA_HCPCS_PYMT_AMT,       ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=MOA_REMARK_CD1,           ALIAS=,            USAGE=A30,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=MOA_REMARK_CD2,           ALIAS=,            USAGE=A30,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=MOA_REMARK_CD3,           ALIAS=,            USAGE=A30,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=MOA_REMARK_CD4,           ALIAS=,            USAGE=A30,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=MOA_REMARK_CD5,           ALIAS=,            USAGE=A30,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=MOA_ESRD_PYMT_AMT,        ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=MOA_NOPAY_PROF_AMT,       ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 09
+$  SVC - Service Information
+SEGNAME=SVC,                        PARENT=CLP,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=SVC_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVC,$
+    FIELD=SVC_COMP_MED_PROC1,       ALIAS=,            USAGE=A54,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_ORGLI_PRVDR_PYMT,     ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=SVC_LI_PRVDR_PYMT,        ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=SVC_NTL_BILNG_REV_CD,     ALIAS=,            USAGE=A48,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=SVC_UNTS_SVC_PD_CNT,      ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=SVC_COMP_MED_PROC2,       ALIAS=,            USAGE=A145,    ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=SVC_ORG_UNTS_SVC_CNT,     ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 07
+$  DTM - Production Date
+SEGNAME=SVC_DTM,                    PARENT=SVC,        SEGTYPE=S0,                              $
+    FIELD=RECTYPE,                  ALIAS=SVC_DTM_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVCD,$
+    FIELD=SVC_DTM_DTTM_QLFR,        ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_DTM_DATE,             ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=SVC_DTM_TIME,             ALIAS=,            USAGE=A08,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=SVC_DTM_TIME_CD,          ALIAS=,            USAGE=A02,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=SVC_DTM_DTTM_PD_FMT_QLFR, ALIAS=,            USAGE=A03,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=SVC_DTM_DTTM_PD,          ALIAS=,            USAGE=A35,     ACTUAL=A256,  MISSING=ON,   $ 06
+$  CAS - Claim Adjust Claim Level
+SEGNAME=SVC_CAS,                    PARENT=SVC,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=SVC_CAS_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVCC,$
+    FIELD=SVC_CAS_CLM_ADJ_GRP_CD1,  ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD1,  ALIAS=,            USAGE=A05,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=SVC_CAS_CLM_ADJ_AMT1,     ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 03
+    FIELD=SVC_CAS_CLM_ADJ_QTY1,     ALIAS=,            USAGE=A15,     ACTUAL=A256,  MISSING=ON,   $ 04
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD2,  ALIAS=,            USAGE=A05,     ACTUAL=A080,  MISSING=ON,   $ 05
+    FIELD=SVC_CAS_CLM_ADJ_AMT2,     ALIAS=,            USAGE=A18,     ACTUAL=A256,  MISSING=ON,   $ 06
+    FIELD=SVC_CAS_CLM_ADJ_QTY2,     ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 07
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD3,  ALIAS=,            USAGE=A05,     ACTUAL=A256,  MISSING=ON,   $ 08
+    FIELD=SVC_CAS_CLM_ADJ_AMT3,     ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 09
+    FIELD=SVC_CAS_CLM_ADJ_QTY3,     ALIAS=,            USAGE=A15,     ACTUAL=A048,  MISSING=ON,   $ 10
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD4,  ALIAS=,            USAGE=A05,     ACTUAL=A033,  MISSING=ON,   $ 11
+    FIELD=SVC_CAS_CLM_ADJ_AMT4,     ALIAS=,            USAGE=A18,     ACTUAL=A060,  MISSING=ON,   $ 12
+    FIELD=SVC_CAS_CLM_ADJ_QTY4,     ALIAS=,            USAGE=A15,     ACTUAL=A033,  MISSING=ON,   $ 13
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD5,  ALIAS=,            USAGE=A05,     ACTUAL=A018,  MISSING=ON,   $ 14
+    FIELD=SVC_CAS_CLM_ADJ_AMT5,     ALIAS=,            USAGE=A18,     ACTUAL=A035,  MISSING=ON,   $ 15
+    FIELD=SVC_CAS_CLM_ADJ_QTY5,     ALIAS=,            USAGE=A15,     ACTUAL=A018,  MISSING=ON,   $ 16
+    FIELD=SVC_CAS_CLM_ADJ_RSN_CD6,  ALIAS=,            USAGE=A05,     ACTUAL=A030,  MISSING=ON,   $ 17
+    FIELD=SVC_CAS_CLM_ADJ_AMT6,     ALIAS=,            USAGE=A18,     ACTUAL=A018,  MISSING=ON,   $ 18
+    FIELD=SVC_CAS_CLM_ADJ_QTY6,     ALIAS=,            USAGE=A15,     ACTUAL=A030,  MISSING=ON,   $ 19
+$  AMT - Service Supplemental Amount
+SEGNAME=SVC_AMT,                    PARENT=SVC,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=SVC_AMT_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVCA,$
+    FIELD=SVC_AMT_QLFR_CD,          ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_AMT_SUPPLMNTL_AMT,    ALIAS=,            USAGE=A18,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=SVC_AMT_CRDT_DBT_FLAG,    ALIAS=,            USAGE=A01,     ACTUAL=A080,  MISSING=ON,   $ 03
+$ SVC_REF - Additional Info
+SEGNAME=SVC_REF,                    PARENT=SVC,        SEGTYPE=S0,                                 $
+    FIELD=RECTYPE,                  ALIAS=SVC_REF_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVCR, $
+    FIELD=SVC_REF_ID_QLFR,          ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_REF_ID,               ALIAS=,            USAGE=A50,     ACTUAL=A080,  MISSING=ON,   $ 02
+    FIELD=SVC_REF_DESC,             ALIAS=,            USAGE=A80,     ACTUAL=A080,  MISSING=ON,   $ 03
+$ SVC_QTY Service Supplemental Information Quantity
+SEGNAME=SVC_QTY,                    PARENT=SVC,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=SVC_QTY_RT,  USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SVCQ, $
+    FIELD=SVC_QTY_QLFR_CD,          ALIAS=,            USAGE=A02,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SVC_QTY_QUANTITY,         ALIAS=,            USAGE=A15,     ACTUAL=A080,  MISSING=ON,   $ 02
+-*    FIELD=QTY_COMP_UOM,             ALIAS=,            USAGE=A02,     ACTUAL=A080,  MISSING=ON,   $ 03
+-*    FIELD=QTY_FREE_FORM_MSG         ALIAS=,            USAGE=A30,     ACTUAL=A256,  MISSING=ON,   $ 04
+$  LQ - Industry Codes
+SEGNAME=LQ,                         PARENT=SVC,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=LQ_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=LQ,$
+    FIELD=LQ_FORM_TYP_CD,           ALIAS=,            USAGE=A03,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=LQ_INDUSTRY_CD,           ALIAS=,            USAGE=A30,     ACTUAL=A080,  MISSING=ON,   $ 02
+$ SE - Transaction Set Trailer
+SEGNAME=SE,                         PARENT=ST,         SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=SE_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=SE,  $
+    FIELD=SE_NO_INCL_SGMTS,         ALIAS=,            USAGE=A10,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=SE_TXN_SET_CNTL_NO,       ALIAS=,            USAGE=A09,     ACTUAL=A080,  MISSING=ON,   $ 02
+$ GE - Functional Group Trailer
+SEGNAME=GE,                         PARENT=GS,         SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=GE_RT,       USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=GE,  $
+    FIELD=GE_NO_TXN_SETS_INCL,      ALIAS=,            USAGE=A10,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=GE_GRP_CNTL_NO,           ALIAS=,            USAGE=A09,     ACTUAL=A080,  MISSING=ON,   $ 02
+$ IEA - Interchange Control Trailer
+SEGNAME=IEA,                        PARENT=ISA,        SEGTYPE=S0,                                $
+    FIELD=RECTYPE,                  ALIAS=IEA_RT,      USAGE=A04,     ACTUAL=A004,  MISSING=ON,   ACCEPT=IEA, $
+    FIELD=IEA_NO_FUNC_GRPS,         ALIAS=,            USAGE=A05,     ACTUAL=A055,  MISSING=ON,   $ 01
+    FIELD=IEA_IC_CNTL_NO,           ALIAS=,            USAGE=A09,     ACTUAL=A080,  MISSING=ON,   $ 02
