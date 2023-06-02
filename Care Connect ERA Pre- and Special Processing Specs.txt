@@ -1,0 +1,1423 @@
+ERA Pre- and Special Processing
+
+Updated 1/11/13
+
+Table of Contents
+
+Overview	4
+ERA Processing	4
+Splitting Files Between Legacy and CareConnect Systems	4
+ERA Files/Processing Schedule	5
+ERA Clearing Accounts	7
+UC Group / Reason Codes	7
+EPP - ERA Preprocessing	7
+Duplicate File Check	7
+NPI/Tax ID/Division Default	7
+Sorting Transactions within ERA File	8
+Creating a Balanced ERA Transaction	9
+Charge Matching Logic	14
+EPP Charge Matching Table	14
+Payments When Charge Balance Not on Invoice	16
+Charge Balance on Different Invoice	16
+Payments when the Charge Transferred to the Guarantor	16
+EPP Data Correction	17
+RAC Warnings	20
+EPP Transactions Deletions	20
+Invoice-Level Denials	21
+EPP Special Processing for EDC	22
+Plastic Surgery	22
+Duplicate Check Numbers for Payer	23
+EDC Contracted versus Non-Contracted Payers	23
+EDC Worker’s Comp	24
+Lump Sum Payments	25
+Invoice-Level Payments or Multiple Payments on an Invoice that Zero Out Invoice	25
+Total ERA Payments = Invoice Balance	25
+Total ERA Payments + Contractual Adjustments + Patient Responsibility = Invoice Balance	26
+Total ERA Payments + Contractual Adjustments = Invoice Balance	26
+Lump sum payments on bundled charges	26
+Recoups	28
+Payments on Invoice with an MPV or Expected Reimbursement Appeal	29
+EPP Removes the PR Group and Reason Codes	29
+Provider Adjustments	30
+Non-Cash Checks	30
+Other Provider Adjustments (PLB segment is valued)	30
+Late Charge Adjustment – Not Blue Shield	33
+Modifier 50 Logic	34
+Denials with No Group and Reason Code	35
+EPP Logs and Reports	35
+ERA Special Processing	37
+Duplicate Files	37
+Posting Provider Adjustments to Specific Clearing Accounts	37
+Provider Adjustments for Outside Vendors	37
+Rejections versus Posting to a Clearing Account	37
+Remittance WQs	38
+Package Payments	39
+Posting Contractual Adjustments on Denials	39
+Retaining the ERA Payer	39
+House Staff	40
+ERA Transaction Codes	41
+Reason Codes	41
+Transfer to NRP Reason Codes	41
+Obsolete Reason Codes	41
+PB Processing	41
+PB Claims	41
+PB Credit WQ	41
+Interest payments	42
+Reporting	42
+CareConnect Remittance Reports	43
+HealthLogic Requirements	43
+Cash Posting Procedures	43
+Attachment I - ACH to Department Mapping Table	43
+Attachment II – ERA Reason Code Action Table	43
+Attachment III - ERA Clearing Accounts for Provider Adjustments	54
+Attachment IV – ERA Clearing Accounts by Payer and Billing Office	55
+Attachment V - UC Group and Reason Codes	56
+Optimization	58
+Medi-Cal Share of Cost	58
+Bundled Payments on Charges with Modifier 50	58
+ 
+
+
+Overview 
+
+FPG posts over 95% of its insurance payments electronically via ERA processing.  This represents an average of around 15,000 payments posted electronic every day.  To allow CareConnect ERA to post as many transactions as possible without manual intervention, FPG Decision Support picks up the payer files submitted to it from Health Logic and reworks transactions wherever necessary and possible to allow for clean posting of the transactions in CareConnect.  This file manipulation is done by the Professional Billing (PB) ERA Pre-Processor (EPP).
+
+The major functions of the EPP are
+
+1. Delete exact offsetting transactions from the file
+2. Delete zero payment transactions from the file when they do not contain sufficient information to post them without manual intervention
+3. Rework transactions to enable them to post
+a. Add missing information when the ERA transaction includes enough information for EPP to identify the exact CareConnect transaction to post to, but not enough information for Epic to automatically post the transaction without EPP filling in the needed fields.  
+b. Break bundled payments into individual line-item payments when 
+i. The payer rolls transactions together 
+ii. The payer makes a lump sum payment on an invoice
+c. Create balanced ERA transactions, so the payment + Group/Reason Codes (GP/RC) = the original charge amounts.  
+d. Set up the GP/RCs to force the desired action on CareConnect.
+4. Rebalance the file to account for added and deleted transactions, so the file submitted to ERA balances internally.
+5. Create a log of all incoming transactions, so PBO has a record of the transactions that were deleted from the file.
+6. Create alert to IT and PBO when a error condition occurs.
+
+ERA Processing
+Splitting Files Between Legacy and CareConnect Systems
+
+BOA/Health Logic (HL) will split the ERA files between the legacy and CareConnect systems based on the following criteria
+
+PriorityTransaction AttributeCareConnect/EpicLegacy
+1
+Account Number/Invoice Number has J2A0 or A0J2 concatenated to it
+
+
+Yes2Account Number/Invoice Number starts with “P”Yes3DOS < 3/1/12Yes4DOS >= 3/1/12Yes5Other (e.g., no DOS and invoice number does not contain J2A0 or “P” )Yes
+
+ERA Files/Processing Schedule
+
+
+The list of the ERA payers is in the table below.  Pre-Processor runs periodically throughout each day polling for files.  Its picks up and processes files as they are deposited in the specified FTP folder. 
+
+HealthLogic sends a maximum of one ERA file per day for each of the files listed under ERA File in the table below.  HL concatenates departments into the same file.  If HL receives more than one file from OA for a payer in a given day, it concatenates these files into a single file.
+
+Pre-Processor runs periodically throughout each day polling for files.  Its picks up and processes files as they are deposited in the specified FTP folder. 
+
+
+PayerERA FileTime to EPPFrequencyComment1 HealthHL Mixed ERA   AARP/United HealthcareAARP   AetnaAETNA   Blue CrossBlue Cross Daily Blue ShieldBlue Shield   CignaCigna   Healthcare PartnersHL Mixed ERA   HealthLogic ERAHealthLogic ERA   HealthLogic EDCHealthLogic EDC   HealthnetHealthnet   HumanaHL Mixed ERA   KaiserHL Mixed ERA   Mail HandlersHL Mixed ERA   Medi-CalMedi-Cal        Weekly MedicareMedicare Daily MolinaHL Mixed ERA   Mutual of OmahaHL Mixed ERA   PacificareHL Mixed ERA   SCAN CA MedicareHL Mixed ERA  Pending EFTTricareHL Mixed ERA   Tufts Associated HealthHL Mixed ERA  Pending EFTTufts Benefit AdministratorsHL Mixed ERA  Pending EFTChildren’s Physicians MediHL Mixed ERA  Pending EFTTotal Health PlanHL Mixed ERA  Pending EFTUCLA Managed Care Tapestry Weekly UHCUCH   University of CaliforniaBlue Cross    
+ERA Clearing Accounts
+
+ERA posts provider adjustments that do not get posted directly to an invoice to PB clearing accounts.  
+
+When ERA is unable to post a payment and the EPP was unable to match the payment to an invoice, ERA rejects the transactions to payer specific clearing accounts.  For a complete list of ERA related clearing accounts see Attachment IV - ERA Clearing Accounts. 
+UC Group / Reason Codes
+
+To drive processing in PB, we have established a series of customized reason codes. These codes are associated with a “UC” group code. See Attachment V for a complete list of UC reason codes.  
+
+Note that the amount associated with a UC GP/RC is always zero.  UC Group Reason Codes are stripped from secondary claims before they are submitted; therefore, these codes cannot be considered in creating a balanced transaction (i.e., secondary payers will be looking for valid HIPAA GP/RCs to define the primary payer’s adjudication, so EPP must submit balanced transactions using the CO, PI, OA, and PR Group Codes with valid Reason Codes.
+
+EPP - ERA Preprocessing
+Duplicate File Check
+
+EPP will perform duplicate file checking by matching the file transaction count and size to previous files.  If these are a 100% match, EPP will reject the file as a duplicate.  EPP’s duplicate check processing provides additional protection against a duplicate file in case the file is a duplicate but the size is off slightly. 
+
+
+Possible future processing:  
+
+If the file matching logic proves problematic (e.g., EPP rejects files that meet the matching criteria, but they are not duplicates, we will consider more elaborate duplicate file checking such as checking if the first five transactions in the file match those of another file already processed by EPP.  The transactions match if the check number, payment amount, invoice number, and check date match.  EPP maintains an index to identify the transactions it previously processed via ERA since at the time it is checking for a duplicate file it cannot depend on all previously submitted ERAs having been posted into Epic (e.g., an ERA may be pending correction of rejections by Cash Posting (CP) .
+
+
+When EPP rejects an ERA file, it sends an email with the Subject “URGENT – ERA FILE REJECTION” to the designated PB ERA Email List, which includes IT and the PBO Cash Posting Assistant Director.
+NPI/Tax ID/Division Default
+
+Health Logic sends UCLA the NPI and Tax ID that comes on the transaction.  If the transaction does not have an NPI, Tax ID, department name and/or address, Health Logic defaults the missing fields using the following values.
+
+N1*PE*UCLA FPG BILLING OFFICE*XX*9999999999
+N3*5767 CENTURY BLVD, STE 400
+N4*LOS ANGELES*CA*900455631
+REF*TJ*999999999
+
+If the ERA transaction does not have a valid NPI and/or Tax ID or the transaction has the default values, EPP attempts to fill in the correct values, so the payment will post under the correct division.  
+
+1. EPP fills in the NPI and/or Tax ID based on the matching charge’s billing provider’s department.  
+2. If EPP cannot determine the NPI and/or Tax ID from the charge’s billing provider, EPP values these fields by mapping the transaction to the correct department using the ACH number on the transaction (ACH number in 835 BPR 04) and the ACH to Department Mapping Table (BB to supply)(see Attachment I).  The table includes the ACH, NPI, Tax ID, and department name.  
+3. If a payment transaction cannot be mapped using the mapping table, EPP defaults the Clearing Account NPI and Tax ID Number to the transaction (i.e., 9999999999), so the payments post under the dummy Clearing Account Division. When CP moves the payment to the correct charge, the money will apply to the correct Bill Area.  
+
+Sorting Transactions within ERA File
+
+EPP sorts the transactions within the ERA file before submission to CareConnect as follows
+
+Highest Level Sort	Check Number
+Second			Patient Number
+Third			Invoice Number
+Fourth			Debit Payments (i.e., recoups)
+Fifth			Credit Payments/Zero Payments
+
+This sort occurs after any matching logic and data defaults are completed by EPP. For example, EPP attempts to match the HIC numbers on a provider adjustment and a payment transaction to fill in the invoice number on the provider adjustment.  The transaction sort occurs after the invoice number is filled in.
+
+
+Creating a Balanced ERA Transaction
+
+Each ERA transaction must be balanced (i.e., the payment plus the reason code amounts on the transaction must equal the Original Charge Amount).  Therefore, EPP forces transactions to balance.  
+
+If necessary to create this balancing, EPP adds a PI A1 Group and Reason Code for the amount needed to create a balanced transaction.  The PI A1 GP/RC holds any unadjudicated balance on the charge on the invoice (i.e., PI A1 is set up in ERA processing as “Research,” which hold the balance at the current payer without posting an adjustment or transferring for the PI A1 amount.
+
+EPP also uses the CAS segments to set up the desired ERA processing in CareConnect.  
+
+EPP adds additional GP/RCs based on the scenario.
+
+1. EPP adds UC GP/RCs in the scenarios specified throughout this document.  UC GP/RC are always associated with a $0 amount.
+2. When EPP is setting up a contractual adjustment, EPP always creates the CAS segment with a CO 45 since this is the only GP/RC that creates an adjustment in CareConnect.  All other reason codes (except A1) are set up as “Denial” and “NRP” in CareConnect.
+
+When a payment transaction includes a CO, OA, or PI with a RC other than 45, EPP sets the associated amount to $0.  This passes the GP/RC code to CareConnect as informational, but it does not create an adjustment or transfer. 
+
+When a zero payment transaction without a copayment/deductible PR includes an RC other than the special handling codes (i.e., PI A1, PR 1, 2, 3, 122, or CO 45), EPP sets the associated amount to the Original Charge Amount.  This passes the GP/RC code to CareConnect for processing as a denial or NRP based on the default reason code action.  If the zero payment does not include a reason code other than the special handling codes above, EPP uses CO 16 as the default GP/RC for the zero payment.  This will treat the transaction as a denial.
+
+If the transaction does not have a PR, EPP calculates the PR = charge balance minus payment and C/A.  EPP adds “PR” “2” to the transaction with the calculated PR amount.  EPP creates a second PR 2 CAS Segment for the remaining charge balance on a payment transaction when the payer’s adjudication does not account for the full charge balance (i.e., charge balance – payment minus C/A minus PR <= the charge balance) (in other words, it there anything left, it transfers to NRP).  
+
+If the ERA transaction does not have a contractual, but it does include the Allowed Amount, EPP calculates the CO 45 based on the Charge Amount – Allowed Amount.  EPP needs to consider secondary in calculating the CO 45 since we do not want to take the contractual adjustment twice.
+
+See further details on the EPP processing rules below.
+
+
+
+ScenarioContracted PayerPaymentERA PREPP Sets CO 45 AmountPI A1 / CO 16 Amount
+1
+Yes>  0Any RCPayer is Primary: Charge Balance minus Pmt minus PR = CO 45 – see additional PR rule above.
+
+Take the PR per the payer’s transaction and create a contractual for the balance to zero out the charge.
+If Charge Balance does not equal the Charge Original Amount, EPP submits a PI A1 for the difference between the Original Charge Amount and the Charge Balance.
+2
+Yes= 01, 2, 3, 122Charge Balance minus PR = CO 45
+
+
+The PR is a deductible, so we transfer the PR to the NRP and take the contractual since the payer “paid” the claims (i.e., applied it to the patient’s deductible).  A deductible PR differentiates a zero payment from a denial.
+If Charge Balance does not equal the Charge Original Amount, EPP submits a PI A1 for the difference between the Original Charge Amount and the Charge Balance
+3
+
+
+
+
+
+
+Yes= 0Unvalued or NOT = 1, 2, 3, 122No CO 45:  On a zero payment without a deductable/copayment PR (i.e., PR = 1, 2, 3, or 122), EPP does not send a CO 45.  
+
+EPP sends the ERA transaction GP/RCs (except CO 45) with their associated amounts as long as they equal the Original Charge Amount.  
+
+If the transaction included a PR, EPP sends the PR with the amount $0.
+
+
+
+EPP submits a PI A1 for the difference between the Original Charge Amount and GP/RC on the ERA transaction.
+4
+No>=  0Any PR RC or the PR unvaluedNo CO 45 amount.
+
+EPP creates a PR 2 for the Charge Balance minus the payment and ERA PR amount.
+If Charge Balance does not equal the Charge Original Amount, EPP submits a PI A1 for the difference between the Original Charge Amount and the Charge Balance
+5
+Either>  0NOT 1, 2, 3, 122Standard CO 45 processing above.
+EPP converts the PR RC to PR 2 since Epic only transfer for PR 1, 2, 3, and 122.
+
+ScenarioContracted PayerERA Transaction Charge on Invoice in CareConnect EPP SubmitsCareConnect ActionsComments
+1
+
+
+Yes
+
+Billed Amt      $100
+Payment          $60
+PR 1                $15
+CO 45              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 1                $15
+CO 45              $25
+Payment          $60
+NRP                $15
+Adjustment      $25
+Inv Crg Bal      $ 0
+
+No changes by EPP
+1
+
+
+Yes
+
+Billed Amt      $100
+Payment          $60
+PR 1                $15
+Allowed Amt    $75
+
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 1                $15
+CO 45              $25
+Payment          $60
+NRP                $15
+Adjustment      $25
+Inv Crg Bal      $ 0
+EPP adds the CO 45 to balance the transaction and fully adjudicate the charge
+1
+
+
+Yes
+
+Billed Amt      $100
+Payment          $60
+PR 1                $15
+No Allowed Amt     and CO/OA/PI
+
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 1                $15
+PR 2                $25
+Payment          $60
+NRP                $15
+NRP                $25
+Inv Crg Bal      $ 0
+EPP adds the PR 2 to balance the transaction and fully adjudicate the charge
+1
+
+
+Yes
+
+Billed Amt      $100
+Payment          $60
+PR 2                $15
+CO 15              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 2                $15
+CO 45              $25
+CO 15              $ 0
+Payment          $60
+NRP                $15
+Adjustment      $25
+Inv Crg Bal      $ 0
+1. EPP adds a CO 45 $25
+2. EPP changes the CO 15 amount to $0
+1
+
+
+Yes
+
+Billed Amt        $50
+Payment          $20
+PR 122            $ 5
+CO 15              $25
+Billed Amt  $100
+Balance       $50
+
+Billed Amt:     $100
+Payment        $  20
+PR 122          $    5
+CO 45            $ 25
+CO 15            $   0
+PI A1             $ 50
+Payment          $20
+NRP                $  5
+Adjustment      $25
+Inv Crg Bal      $ 0
+Secondary payment
+1. EPP sets the Billed Amt to $100
+2. EPP adds a CO 45 $25
+3. EPP changes the CO 15 amount to $0
+4. EPP adds a PI A1 $50
+2
+
+
+Yes
+
+Billed Amt      $100
+Payment          $ 0
+PR 1                $75
+CO 45              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $ 0
+PR 1                $75
+CO 45              $25
+Payment          $ 0
+NRP                $75
+Adjustment      $25
+Inv Crg Bal      $ 0
+
+No changes by EPP
+2
+
+
+Yes
+
+Billed Amt      $100
+Payment          $ 0
+PR 2                $75
+CO 15              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $ 0
+PR 2                $75
+CO 45              $25
+CO 15              $ 0
+Payment          $ 0
+NRP                $75
+Adjustment      $25
+Inv Crg Bal      $ 0
+1. EPP adds a CO 45 $25
+2. EPP changes the CO 15 amount to $0
+2
+
+
+Yes
+
+Billed Amt        $50
+Payment          $ 0
+PR 122            $25
+CO 15              $25
+Billed Amt  $100
+Balance       $50
+
+Billed Amt:     $100
+Payment          $ 0
+PR 122             $25
+CO 45              $25
+CO 15              $ 0
+PI A1               $50
+Payment          $   0
+NRP                $   0
+Adjustment      $   0
+Inv Crg Bal      $100*
+
+*Based on RC action.  Some zero payments transfer to NRP, but EPP submits the same transaction regardless of the CareConnect Action associated with the RC.
+
+Secondary payment
+1. EPP sets the Billed Amt to $100
+2. EPP adds a CO 45 $25
+3. EPP changes the CO 15 amount to $0
+4. EPP adds a PI A1 $50
+3
+
+
+Yes
+
+Billed Amt      $100
+Payment          $ 0
+PR 18              $75
+CO 45              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $ 0
+PR 18              $ 0
+CO 45              $ 0
+CO 16           $100
+Payment          $   0
+NRP                $   0
+Adjustment      $   0
+Inv Crg Bal      $100*
+
+
+1. EPP sets PR 18 $0
+2. EPP sets CO 45 $0
+3. EPP adds a CO 16 $100
+3
+
+
+Yes
+
+Billed Amt      $100
+Payment          $ 0
+PR 25              $75
+CO 15              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $ 0
+PR 25              $ 0
+CO 15              $ 0
+CO 16              $100
+Payment          $ 0
+NRP                $75
+Adjustment      $25
+Inv Crg Bal      $ 0
+1. EPP sets PR 25 $0
+2. EPP sets CO 15 $0
+3. EPP adds a CO 16 $100
+3
+
+
+Yes
+
+Billed Amt        $50
+Payment          $ 0
+PR 41              $25
+CO 45              $25
+Billed Amt  $100
+Balance       $50
+
+Billed Amt:     $100
+Payment          $  0
+PR 41              $  0
+CO 45              $  0
+CO 16               $100
+Payment          $ 0
+NRP                $ 0 
+Adjustment      $ 0
+Inv Crg Bal      $50
+Secondary payment
+1. EPP sets the Billed Amt to $100
+2. EPP sets PR 41 to $ 0
+3. EPP sets CO 45 to $0
+4. EPP adds a CO 16 $100
+4 
+
+
+No
+
+Billed Amt      $100
+Payment          $60
+PR 1                $15
+CO 45             $25
+
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 1                $15
+PR 2                 $25
+Payment          $60
+NRP                $15
+NRP                $25
+Inv Crg Bal      $ 0
+EPP adds the PR 2 to transfer the full balance to NRP and fully adjudicate the charge
+4 
+
+
+No
+
+Billed Amt      $100
+Payment           $ 0
+PR 2                $75
+CO 15              $25
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment         $ 0
+PR 2               $75
+PR 2               $25
+
+Payment          $ 0
+NRP                $75
+NRP                $25
+Inv Crg Bal      $ 0
+1. EPP sets CO 15 $0
+2. EPP adds PR 2 $25
+4 
+
+
+No
+
+Billed Amt      $100
+Payment           $ 0
+CO 45            $100
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:    $100
+Payment        $   0
+CO 45            $   0
+CO 16           $100
+
+Payment          $ 0
+Inv Crg Bal      $ 100
+1. EPP sets CO 45 $0
+2. EPP adds CO 16 $100
+5
+
+
+No
+
+Billed Amt      $100
+Payment          $60
+PR 18              $15
+CO 45             $25
+
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 2                $15
+PR 2                 $25
+Payment          $60
+NRP                $15
+NRP                $25
+Inv Crg Bal      $ 0
+EPP converts the PR18 to PR 2
+EPP adds the PR 2 to transfer the full balance to NRP and fully adjudicate the charge
+5
+
+
+Yes
+
+Billed Amt      $100
+Payment          $60
+PR 18              $15
+CO 45             $25
+
+Billed Amt  $100
+Balance      $100
+
+Billed Amt:     $100
+Payment          $60
+PR 2                $15
+CO 45                 $25
+Payment          $60
+NRP                $15
+NRP                $25
+Inv Crg Bal      $ 0
+EPP converts the PR 18 to PR 2 
+
+See additional scenarios throughout the EPP Processing Section where the PI A1 or CO 16 Group and Reason Code are used.  
+
+Note that Cash Posting completes the PI A1 and CO 16 Group and Reason Code when it applies the correct action to the charge or it moves the payment to the correct charge.
+
+Charge Matching Logic
+
+EPP attempts to match transactions in the file to charges in CareConnect using the information on the ERA transaction and the invoice.  Once it matches a charge, it fills in any missing fields that Epic requires to enable ERA to post the transaction without rejecting it, which would require manual intervention.  
+
+Note:  The 835 REF 6R segment includes the Epic internal transaction ID.  Epic ERA does not use this field to match the charge to the ERA; however, EPP might be able to use it for the 1st level match of the charge to the ERA.
+
+The fields CareConnect requires to automatically post an ERA transaction are 
+
+1. Invoice Number
+2. DOS
+3. Procedure Code
+4. Billed Amount.  
+
+EPP also fills in the first charge modifier when it is needed to provide a more precise match since Epic uses the modifier to match a transaction to a charge.  The modifier is not required for CareConnect to post a transaction.
+
+If the invoice number on the transaction is invalid or the invoice does not include a charge that matches to the ERA transaction, EPP uses the patient information provided on the transaction to attempt to find the matching charge on another invoice for the patient.  If EPP does identify the invoice with the charge matching the transaction, EPP changes the invoice number to the one with the matching charge.  
+
+The ERA transaction must match the following on the invoice for EPP to change the invoice number.
+
+1. DOS
+2. Procedure code
+3. Original Charge Amount or Billed amount (i.e., the secondary amount billed to the payer).
+4. ERA NPI must match the division/sub-division of the charge billing provider 
+
+
+EPP Charge Matching Table
+
+
+InvoiceDOSProcedure CodeBilled AmountModEPP Adds Grp/RCEPP matches to charges that are Unpaid on the invoice (i.e., no payment if primary) or no payment on secondary portion if secondary payment when possible.  Note that a charge is unpaid if the entire balance was credit adjusted.
+
+If it cannot match to an unpaid charge, it matches to paid charges.Best MatchXXXXXNote: the procedure code needs to match to the code that went out on the claim, which may have been translated based on the payer in claims processing.  Codes are translated in EAP.
+
+1. Alternate Code (EAP INI 2010) 
+2. Alternate Identifier (i.e., payer, EAP INI 2009)
+3. EPP needs to consider the date range since the Alternate Code may be limited by the date.
+
+On Medi-Cal primary or Medi-Cal secondary to any payer but Medicare, the procedure code is the one that goes to Medi-Cal.  
+
+Since Medi-Medi claims go out with the Medicare procedure code, EPPs matches to the Medicare procedure code. EPP also attempts to match to the Medi-Cal code since the claim may have gone out with the Medi-Cal code rather than the Medicare code.
+
+Billed amount needs to match the original charge amount, not the amount billed to a secondary payer. Second Best MatchXXXXGood Match XXXEPP fills in the billed amountGood Match XXXEPP fills in the DOSGood MatchXXXEPP fills in the Procedure Code (see Alternate Code logic above)Okay MatchXIf only one charge on the invoice, match payment to the charge unless EPP can identify another invoice where the payment matches.
+
+EPP fills in the DOS, PROC code, and billed amountOkay MatchXXXIf the payment is not on the correct invoice, EPP finds the correct invoice if possible and changes the invoice number on the transaction to match the invoice with the charge.  EPP requires the DOS, procedure code, billed amount, and ERA NPI to the division/sub-division of the charge billing provider
+
+Last resortX
+UC U001If EPP cannot identify the correct charge on a transaction with a valid CareConnect invoice number, EPP fills in the info from the first open charge on the invoice, which will usually force an overpayment on this charge.
+
+EPP sets the amount associated with the CO and PR codes to zero to prevent Epic from posting the contractual or transfer.  
+
+EPP adds the default PI A1 Charge Group and Reason Code needed to balance the transaction and hold the charge at the current responsible party (i.e., Payment + PI A1 Amount = the charge original amount).
+
+If the invoice has no open charge, EPP sets up the transaction to post on the first charge on the invoice.  This at least keeps the payment on the invoice to facilitate later distribution by CP.  
+
+EPP adds a UC U001 “Payment Posted to First Charge” Group and Reason Code to the transaction to force the transaction to the Cash Posting Invoice CP Lump Sum Follow-Up WQ.  EPP sets the UC U001 Amount to $0 since Epic ERA should not consider this transaction in balancing the transaction. This GP/RC is added in addition to the PI A1.
+
+
+Payments When Charge Balance Not on Invoice
+Charge Balance on Different Invoice
+
+See table above.
+Payments when the Charge Transferred to the Guarantor
+
+If the full charge amount or some of the insurance portion of the charge previously transferred to the guarantor and the insurance balance is zero, EPP performs the following
+
+1 Submits the payment and adjustment to post to the original invoice. This will create a credit on the charge at the invoice level.
+2 Adds a UC U002 “Insurance Paid/Balance at Guarantor” Reason Code, so these charges are isolated to the “Ins Pmt on Charge with Bal at Guar” Credit WQ.  The UC U002 Amount is set to zero.  
+3 Scenarios for handling the guarantor portion 
+a) If the entire charge transferred to guarantor and is unpaid, CareConnect transfers the insurance portion back to insurance using the qualifying WQ and an LPP (Epic programming point)
+b) If the entire balance transferred to the guarantor and the guarantor partially or fully paid the charge.
+i) CareConnect un-matches the guarantor payment up to the amount of the insurance overpaid portion on charge
+ii) CareConnect transfers the insurance portion back to insurance  
+iii) Rematches the payment to any open patient liability.  If the payment is more than the guarantor’s open charges, the payment remains undistributed on the guarantor. 
+
+For example, 
+(1) Charge 100
+(2) Original payment -$60, -CA $30, -PR $10
+(3) Recoup payment +$60, +CA $30, PR +$10
+(4) Associated payment -$60, -CA $35, -PR $5; this leave a -$5 balance at insurance
+(5) Guarantor paid $10 PR
+(6) PB 
+(a) Disassociate $5 of the guarantor payment
+(b) Transfers $5 from the self-pay back to insurance, which will clear the -$5 balance
+(7) Charge balance = $0 and guarantor has $5 undistributed or applied to other charges
+	
+
+c) Partial amount of charge transferred to guarantor and is unpaid:  Same is “a” above except the transfer amount will be up to the amount of the insurance portion minus what remained on insurance.
+
+For example:  Charge was $100; $45 transferred to guarantor; insurance payment and adjustment subsequently received for $60; Epic transfers $5 back to insurance.
+
+d) Partial amount of charge transferred to guarantor and the guarantor partially or fully paid the charge:  Same as “b” above except the transfer amount will be up to the amount of the insurance portion minus what remained on insurance.
+
+e) If the original PR transferred to secondary insurance, PB will leave the -$5 at the original insurance.  This will be picked up in credit WQs.	
+
+EPP Data Correction
+
+EPP adds, corrects, and deletes data on an individual transaction to allow it to post.  The fields are noted in the table below.  
+
+EPP makes the necessary corrections at both the claim level and service level of the transaction when applicable.
+
+EPP fully adjudicates the charge when possible (i.e., the sum of deductible, copay, coinsurance, adjustments, and paid amounts are equal to the charge balance).  These adjustments include penalties applied to the details such as deduction for provider not using e-prescribing.  See the Creating a Balanced ERA Transaction for details on how EPP values the Billed Amount and CAS Segments.
+
+
+FieldValue in ERAEPP ProcessesSpecial Processing if EPP is unable to populate correctlyCommentEDCERA
+Invoice
+
+
+
+
+
+
+
+
+
+
+
+EPP corrects the invoice number when the invoice number on the transaction is the wrong invoice number for the charge matched to the transaction and EPP can identify the correct invoice number.  
+
+When this occurs, EPP replaces the invoice number on the ERA transaction with the correct invoice number.  
+
+This occurs when 
+
+1.  EPP determines the charge is not on the ERA invoice and
+2.  EPP can identify the charge on another invoice for the patient based on DOS, procedure code, billed amount, and division.  
+
+Division is identified by the NPI/Tax ID.
+
+
+Leave as is to allow rejection
+
+
+Set invoice number to “ERA CU Invoice Number – “9999999999” to direct to a CU account for the payer  See ERA Special Processing and Cash Posting Sections.
+
+
+For EDC, ERA rejects to the BOA EDC Remittance WQ for CP to match to the charge and post the same day.Denial with no Group and Reason CodeBlankEPP adds a “CO” “16” Group and Reason CodeContractual AdjustmentNo CO Group CodeSee Creating a Balanced ERA TransactionContractual AdjustmentSee Creating a Balanced ERA TransactionAllowed Amount0 or blankIf Payment > 0 and CA Amount > 0, EPP sets the Allowed Amount = Billed Amount – CA AmountPR Amount See Creating a Balanced ERA TransactionNPISee NPI/Tax ID/Division Default
+DOSEPP sets to the DOS of the matching charge based on matching criteria.Billed AmountEPP sets the ERA Billed Amount to the original charge amount.  This applies to secondary as well, not the amount billed to the secondary.
+Billed Amount should not be a negative number.  Multiple Billed Amount * -1 to make it positive on the ERA transaction if applicable.Procedure CodeEPP matches the procedure charge on the transaction to the procedure code that went out on the claim, which may not be the procedure code on the charge since some payers do not use the standard CPT codes.  ModifierEPP adds the charge modifier if it is needed to match to the database charge (e.g., the invoice ahs two or more matching charges and the one with the payment has a modifier. Provider AdjustmentIf EPP can revise a provider adjustment into an ERA payment transaction, EPP removes the PLB provider adjustment segment.For example, if the file includes a recoup and a provider adjustment with a new payment on the same charge, EPP turns the provider adjustment into a payment transaction on the charge and removes the PLB segment from the transaction.  Payment AmountFlip the sign if appropriate.
+RAC Warnings
+
+If the transaction is a RAC warning and the payment is not equal zero, but it not an actual payment (i.e., the payment is not reflected in the check), EPP revises the transaction to set the payment amount to zero.  EPP identifies RAC warnings by Remark Code N432.
+
+EPP adds a UC U010 GP/RC to these transactions with the amount = 0.  PBO gets a report of charges with an unsatisfied UC U010 GP/RC.
+
+EPP Transactions Deletions 
+
+EPP deletes transactions out of the ERA files in the following scenarios.  EPP flags the deleted transactions in the log file with the reason for the deletion.
+
+
+1. Payment sent in previous ERA or EDC file. If the check number, check date, and payer match to a transaction in a previously processed ERA and EDC file, EPP deletes the transaction.  EPP keeps an index in order to perform this check.  EPP generates the Duplicate Payment Report of these deleted transactions.  2. Payment = zero and Group Code = CR 3. Payment = zero and invoice is not on Epic4. Payment = zero and 
+1. Transaction cannot be matched to a charge 
+2. Invoice has more than 1 charge and the denial is not for the entire invoice (i.e., if the denial cannot be cleanly posted to a charge or applied to all charges on the invoice, EPP deletes it from the file).  5. The bundled transaction is deleted after the payment was dispersed across the detail transactions.6. Transaction set nets to zero.  Debit and credit payment transactions directly offset each other.  Note the “PR” must be the same if valued on both transactions.7. Net zero transaction set with denial matched to provider adjustment.  EPP deletes the payment transaction along with the matching provider adjustment.8. Payment = zero, charge balance = zero, and the denial already posted with the same denial code9. Payment = zero and billed amount = zero10. Payment = zero, charge balance = zero, and GP/RCs are blank11. Payment = zero and division = Pathology or Anesthesiology and not on Package Account.12. Provider Adjustment when the adjustment is a memo only (i.e., it does not affect the amount of the check).   EPP puts these into the Memo Provider Adjustment File, which it emails to Cash Posting since the payer may be requesting a refund. 13. Provider adjustment is only a summary of detail lines listed elsewhere in the ERA File14. Provider adjustment where the net of the adjustment lines = 0 within a patient/invoice15. Medicare J1 provider adjustment if the adjustments net to zero16. When a payer makes two payments on a single charge with a 50 modifier and EPP determines that the charge billed amount on the second payment transaction equals half the original charge amount, EPP lumps the payments together and deletes the second payment.  This combined payment posts to the original charge since the payer unbundled the bilateral charge.
+17. Payments in an EDC file that were previously received in an ERA file or vice versa.  See the Duplicate Check Numbers for Payer Section for details.18. All transaction on memo checks (definition TBS)
+Invoice-Level Denials 
+
+Payers provide invoice-level denials to deny all charges on the invoice.  This typically occurs on secondary invoices.  When EPP identifies an invoice-level denial, it deletes the invoice-level denial from the ERA file and creates a separate denial for every charge with an open balance on the invoice. 
+
+EPP identifies an invoice-level denial when
+
+1. The payment amount = zero 
+2. The denial does not match to any single charge on the invoice
+3. The invoice has multiple transactions
+4. The Billed Amount on the denial ERA transaction equals one of the following.
+
+a. The Invoice Balance 
+b. The original Invoice Amount (i.e., total amount of the charges billed to the payer on this invoice after the primary payments and adjustments were applied)
+c. Total amount of the charge on the invoice (i.e., total charges before any payments or adjustments were applied.
+EPP Special Processing for EDC
+
+
+EDC (Enhanced Data Capture) payment files come from BOA/Health Logic.  HL creates them by scraping the adjudication information off paper EOBs for payers who do not pay via ERA.  HL augments the paper EOB information by matching the scraped info to the original charge on the invoice using the 837 claims file.  
+
+The special logic to handle EDC transactions is outlined below.
+
+Plastic Surgery
+
+PBO does not perform standard NAA actions for some payers on charges for the non-contracted Plastic Surgery NPI since the patient is responsible for full amount not paid by insurance.  ERA transfers the contractual adjustment amount associated with payments on the non-contracted Plastic Surgery NPI to the NRP unless the payer is in the excluded list (i.e., Medicare, Medi-Cal, Tricare, and CCS).  
+
+
+The non-contracted plastic surgery NPI is noted below.
+PLASTIC SURG GRP OF UCLA
+FED ID: 061720408
+NPI: 1255396602
+
+To support this, when the ERA transaction payment > $0, EPP converts the CO, PI, or OA CAS segment, regardless of the reason code, to PR 2 for the Plastics’ NPI for all payers except those excluded above.  The associated amount on the PR 2 is equal to the charge balance after the payment and original PR amounts are deducted from the charge balance.
+E.g., 
+1.  Charge for non-contracted plastics = $100
+2.  Payment = $60, CO = $30, PR 2 - $10
+3.  EPP sends Payment = $60, PR 2 = $30, PR 2 - $10
+
+EPP performs the same conversion with a $0 payment and a PR 1, 2, 3, or 122
+E.g., 
+1.  Charge for non-contracted plastics = $100
+2.  Payment = $0, CO = $90, PR 2 - $10
+3.  EPP sends Payment = $0, PR 2 = $90, PR 2 - $10
+
+Duplicate Check Numbers for Payer
+
+When EPP identifies a check as a duplicate, EPP deletes the transaction, adds the transaction to the Duplicate Check in ERA File, and sends a report of these duplicate transactions to Cash Posting.  This processing is necessary since payments can come in via an ERA and EDC when a payer submit an ERA payment but sends a paper check to BOA.  BOA has instructs to sort out paper checks from ERA payers; however, these check do end up being processed by EDC at time.
+
+This applies whether the payment came in via a HL ERA files or the HL EDC ERA file (i.e., whichever file the payment comes in second is the file from which the payment is deleted).
+
+A payment is considered a duplicate if the following field match:  Check Date, Check Number, and Payer.
+
+EDC Contracted versus Non-Contracted Payers
+
+EDC payments come in from both contracted and non-contracted payers.  EPP determines if a payer is contracted or non-contracted based on the indicators in the EDC Plan Code Mapping Matrix.  This spreadsheet drives EDC processing based on the plan code.  
+
+Plan codes 1264 and 1265 (generic PPO and HMO respectively) have special handling based on the plan code’s NAIC number since these are generic plan codes that are often used erroneously for contracted payers.
+
+
+On EDC and the mixed ERA file, EPP performs the following logic on an ERA transaction with a payment > $0 or a zero payment that includes a PR 1, 2, 3, or 122 based on the Contracted Indicator in the EDC Plan Code Mapping Matrix. 
+
+If the ERA transaction does not have a payment > $0 or a PR 1, 2, 3, or 122, EPP skips this processing.  This processing does not apply to the payer-specific ERA files (e.g., Medicare, Medi-Cal, Blue Cross, Cigna, Aetna) since these payers are all contracted.
+
+Contracted Payer IndicatorEPP ProcessingPPackage, Transplant – No EPP special handling.  See CareConnect Programming point to reject these to a separate WQ.  YContracted Payer - No EPP special handling unless the contracted payer does not include information on how to dispose of the balance after payment.  
+
+Epic adjudicates per the ERA transaction.  
+
+EPP Rule - EPP attempts to value the C/A and PR if it has adequate information on the transaction to do so.  If the contracted payer does not include information on how to dispose of the balance after payment (i.e., transaction does not have an allowed amount, C/A, or PR), EPP sets up the transaction so CareConnect will post the payment and hold the balance at insurance for PBO to follow-up.  
+
+EPP adds a PI A1 with the Amount = the amount needed to balance the transaction (i.e., Payment + PR/CO/PI/OA amounts = charge original amount).  
+
+EPP also adds a UC U003 Group and Reason Code (No Contractual Adjustment on Payment) with the Amount = 0.  
+S
+EPP Rule - Special handling Payer (e.g., Beech St).  If the charge balance is > zero and the payment does not = the charge balance, EPP removes the C/A and PR and adds a PI A1 with the Amount = to the amount needed to balance the transaction (i.e., Payment + PI A1 amount = charge original amount).  
+
+EPP also adds a UC U003 Group and Reason Code (No Contractual Adjustment on Payment) with the Amount = 0.  This holds the A/R on the invoice and qualifies the invoice for the follow-up WQ for manual review and disposition of the balance.  N
+BlankEPP deletes any CO transactions and adds the CO amount to the “PR” “2” group and reason code for the unpaid balance on the charge after the payment is applied.  If the transaction does not have a “PR” “2,” EPP creates it.  
+
+This passes the balance to the NRP and eliminates any contractual allowance since these are non-contracted payers.  Plan not in tableSee Creating a balanced ERA transaction section.  
+
+EPP puts the transaction in a file, which is emailed to the CareConnect ERA AC notifying him that the plan code needs to be added to the table.
+
+If the payer NAIC number on the payment (N104) is not included in the EDC Plan Code Mapping Matrix, EPP performs the following 
+a. Defaults the dummy NAIC number for the generic commercial payer ID (P9999) into N104), so Epic can post the payment
+b. Converts to CO to PR, so the balance will transfer to the NRP as with non-contracted payers
+c. Creates a report of all payments posted under the generic commercial payer ID, so IT can updated the update with the payer.  
+EDC Worker’s Comp
+
+If the EDC payment is on a worker’s comp payer (1070 and 1266) and the payer did not break out the adjudication by charge on the invoice, EPP performs the following to force Epic to post the payment.
+
+1.   Converts the transactions so the payment will post to the first detail on the ERA invoice.  EPP matches the following fields on the transaction to the first open charge on the invoice charge, so the transaction posts cleanly in Epic
+
+a. 	Billed amount
+b. 	DOS
+c.	Invoice number
+d. 	Procedure code.  
+
+2.  Adds a PI A1 Group and Reason Code with the Amount set to (Payment + PI A1 Amount = Charge Original Amount) to balance the transaction.  It also adds a UC U004 (Worker’s Comp Lump Sum Payment) Group and Reason Code with the Amount = 0 to the transaction. This will drive the invoice to a credit or follow-up WQ respectively, so PBO can get the breakdown and distribute the payment per the payer’s adjudication.  
+
+3.  Creates a denial for all other open charges on the invoice with a CO 16 and the Amount = Original Charge Amount to the transaction.  EPP also adds UC U004 Group and Reason Code with Amount = 0.  This will remove these charges from the standard WC follow-up WQ until the lump sum payment is applied.
+Lump Sum Payments
+
+EPP performs the same processing for other lump sum payments as with WC above when the ERA includes a payment that has a valid invoice number, but the payments is not broken out (criteria TBS – Bill will look at the examples).  When this occurs, EPP performs the following
+
+1.   Converts the transactions so the payment will post to the first detail on the invoice.  EPP values the following fields on the transaction to match the CareConnect charge; billed amount, DOS, invoice number, and procedure code.  
+
+2.  EPP a PI A1 with the Amount set to (Payment + PI A1 Amount = Charge Original Amount) to balance the transaction.  EPP also adds a UC U005 Invoice Lump Sum Payment Group and Reason Code with the Amount = zero to the transaction, which will drive the credit or debit balance on the charge to a credit or follow-up WQ respectively, so PBO can get the breakdown and distribute the payment per the payer’s adjudication.  
+. 
+
+3.  For all other charges on the invoice, Follow-Up needs to skip invoices with an undistributed lump sum payment on the first charge. 
+
+Invoice-Level Payments or Multiple Payments on an Invoice that Zero Out Invoice
+
+If the ERA transactions will post cleanly to the charges and zero out all charges on the invoice, EPP skips the action below, which is intended to apply the transactions across the invoice charges when posting the transactions would otherwise create skewed AR within the invoice.
+
+Total ERA Payments = Invoice Balance
+
+If the total payments on the invoice equal the invoice balance and the ERA transactions will not cleanly post to bring the charge balances to zero, EPP performs the following
+a. Creates a payment for each charge equal to the charge balance and deletes any additional transactions in the ERA file for the invoice.
+b. Skips and deletes any transactions on charges with a zero balance.
+c. Creates a debit payment on charges with credit balances
+
+For example (this occurs with secondary payments where the original payment created skewed AR), 
+i. The invoice has 3 charges with balance = $100, $50, and -$25
+ii. ERA Payment = the invoice balance $125
+iii. EPP creates 3 transactions totaling $125 in payments
+i. - $100 payment, 
+ii. -$50 payment, 
+iii. $25 payment to zero out the invoice
+iv. All charges are zero after CareConnect posts the transactions in the set for the invoice and the total payments equals the total paid on the invoice.
+
+EPP performs standard rounding and adds the associated CAS segments to balance the transactions.  
+Total ERA Payments + Contractual Adjustments + Patient Responsibility = Invoice Balance
+
+If the total payment, contractual adjustments, and patient responsibility equal the total invoice balance and the ERA transactions will not cleanly post to bring the charge balances to zero, EPP generates payment, adjustment, and PR transactions to clear all invoice charge balances.  EPP performs standard rounding and adds the associated CAS segments to balance the transactions.  
+
+
+a. For example, 
+i. The invoice has 2 charges with balance = $200, $100 
+ii. ERA Payment = $150, CA = $120, PR $30
+iii. EPP creates 2 transactions 
+i. Charge 1 - $100 payment; $80 CA; $20 PR 
+ii. Charge 2 - $  50 payment; $40 CA; $10 PR 
+iv. All charges are zero after CareConnect posts the transactions in the set for the invoice
+
+Total ERA Payments + Contractual Adjustments = Invoice Balance
+
+If the total payment and contractual adjustments equal the total invoice balance and the ERA transactions will not cleanly post, EPP generates the payment and adjustment transactions to bring the balance on all open charges on the invoice to zero.  
+
+a. For example, 
+i. The invoice has 2 charges with balance = $200, $100 
+ii. ERA Payment = $180, CA = $120
+iii. EPP creates 2 transactions 
+i. Charge 1 - $120 payment and $80 CA 
+ii. Charge 2 - $  60 payment and $40 CA 
+iv. All charges are zero after CareConnect posts the transactions in the set for the invoice
+
+Lump sum payments on bundled charges
+
+Some payers (e.g., Cigna) make a lump sum payment on bundled charges.  EPP distributes the payments across the bundled charges and deletes the bundle charge if a set of transactions on Cigna (i.e., Payer 01) has the following attributes
+
+a. A transaction on the invoice has an OA-94 Group and Reason code with a payment > 0 (this is the bundled payment)
+b. Set of transactions includes transactions with PI-97 and payment = 0
+c. Billed amount on the payment transaction (i.e., OA-94 payment) equals the total of the Billed Amounts on the other transactions on the invoice with PI-97 and 0 payment
+
+Once EPP processing determines it has a payment on bundled charges, 	it completes the following
+
+a. Allocates the bundled payment (i.e., payment on last transaction) proportionally across the bundled charge transactions
+b.   Sets up the CAS segments for the PR and CO
+(1) If possible, EPP uses the PR and CO on the zero payment transactions for each charge if these balance the charge’s payment transaction
+(2) Otherwise, EPP allocates the bundled CAS segments
+(a) Allocates the PR-1 and PR-2 across the bundled charge transactions – i.e., adjudicates these charges in full 
+a. Allocates or creates the CO 45 for each of the payment transactions to completely adjudicate the charges (e.g., payment – PR – total CO 45 for the charges)
+c.  Deletes the Bundled Payment Transaction payment transaction from the file. 
+d. Does not change other transactions on the invoice that are not part of the bundled transaction set.
+
+
+For example, an ERA file has the following transaction on an invoice.  The $0 payment transactions include the CAS segments PR and CO allocations.
+
+Billed AmountPaymentGP/RCEPP ActionComment300145OA 94Delete Transaction This is the bundled transaction2000PI 97 $100
+PR 2 $20
+CO 45 $80Payment $100
+PR 2 $20
+CO 45 $801000PI 97 $45
+CO 45 $55Payment $45
+CO 45 $55
+An ERA file has the following transaction on an invoice.  The $0 payment transactions do not include the CAS segments PR and CO allocations.
+
+
+Billed AmountPaymentGP/RCEPP ActionComment300150OA 94
+PR 2 $30
+CO 45 $120Delete Transaction This is the bundled transaction2000PI 97 
+EPP prorates the payment, PR, and CO
+
+Payment $100
+PR 2 $20
+PR 45 $801000PI 97 
+Payment $50
+PR 2 $10
+CO 45 $40
+
+Recoups 
+Epic posts the recoup (i.e., all debit payments are recoups) to the matching charge using the same matching logic as with a credit payment.  EPP sorts debit payments ahead of credit payments in the file, so the recoup transactions post first.    
+
+EPP adds UC Group and Reason Codes to these transactions, so they qualify for WQs and can be identified on reports.  The Amount associated with the Recoup Group Reason Codes is always zero.  
+
+The recoup scenarios are listed below.
+
+For recoups with a new payment, EPP ensures the recoup transaction includes the reversal of the original contractual (i.e., debit CO)
+
+
+a) Recoup with no payment.  
+b) Net Recoup in UCLA’s favor (i.e., credit payment > debit payment,).  On these recoups,  EPP performs the following
+
+i) If necessary, revises the recoup transaction set to include the debit payment and the reversal of the original C/A and PR.  
+ii) If necessary, revises the new payment to include the credit payment, C/A, and PR.
+iii) These transactions will zero out the charge unless the new PR is < the original PR (i.e., more has already transferred to NRP than should have).  
+iv) After posting the transaction, CareConnect will create a credit on the invoice.
+v) Credit WQ logic will push the overage amount back to insurance from the NRP and guarantor to clear the credit balance. 
+c) Recoup and new payment net to zero and the PR is the same, EPP deletes these transactions since they are a wash.
+d) Recoup includes debit and credit payments; however, the net Recoup not in UCLA’s favor (i.e., the net recoup is a debit):  If the debit balance on the charge after the recoup and new payment transactions are posted will be <= $25, EPP increases the C/A on the new payment to bring the charge to zero after taking into account the PR that may have already occurred. This zeros out the charge since PBO cannot research recoups < $25; however, Contracting reviews these in a separate process.  (Review with James).
+
+2 To support recoup reporting and WQs, EPP adds the following Group and Reason Codes with the associated amount = zero.  
+
+a) UC RC	Recoup – no payment with recoup – EPP reverses the contractual
+i) UC URC1 = Recoup with no payment.  Original payment on charge.
+ii) UC URC2 = Recoup with no payment.  No previous payment on the charge.
+
+b) UC AD	Recoup and payment in check.  Net is < 0 (i.e., UCLA gets more money)
+i) UC UAD1 = Recoup and payment in check.  Net is < 0 and PR is not affected
+ii) UC UAD2 = Recoup and payment in check.  Net is < 0 and original PR was > the new PR 
+iii) UC UAD3 = Recoup and payment in check.  Net is < 0 and original PR was < the new PR
+
+c) UC AC	Recoup and payment in check.  Net is > 0 (i.e., UCLA gets less money)
+i) UC UAC1 = Recoup and payment in check.  Net is > 0 and PR is not affected
+ii) UC UAC2 = Recoup and payment in check.  Net is > 0 and original PR was > the new PR 
+iii) UC UAC3 = Recoup and payment in check.  Net is > 0 and original PR was < the new PR
+
+Payments on Invoice with an MPV or Expected Reimbursement Appeal 
+
+Typically, payers readjudicate the entire transaction when paying more on a charge in response to an appeal.  However, if the payer does not recoup and repay in the ERA, EPP creates a separate transaction to debit off the additional payment.  
+
+When the payer sends a complete transaction set, which increases the patient liability on the charge, ERA is set to transfer the additional PR amount to NRP.  
+
+Example with full adjudication transaction set:
+
+a. Charge = $100
+b. Original payment = $50, CA = $30, PR = $20.  
+c. Payer recoups the entire transaction.  
+d. New Payment transaction payment = $50, CA $20, PR = $30.  
+e. Epic will repost the payment and $20 CA, and transfer the balance of $10. This is Remittance Option for each RMO “Allow NRP/TSP on payments with recoups” value needs to be set to “Y.”  (Dave to set and Ray to test).
+
+If the payment simply makes an additional payment, EPP will past through the transaction for posting.  This will create a credit balance on the charge, which will be handled by credit WQs.  As with all transactions, EPP balances the transaction, so it will post to CareConnect. 
+
+Optimization:  Send MPV a transaction to clear the appeal.
+Medicare, Medi-Cal, and CCS Readjudication Payments
+
+When Medicare, Medi-Cal, and CCS readjudicate claims to make additional payments, the ERA includes a ??? on the transaction (BB to provide the field on the ERA) indicator. When this indicator is valued, EPP adds a UC U006 Additional Payment on Charge Group and Reason Code with the Amount = zero to force these charges to a credit WQ.  Credit WQ logic will create a debit adjustment to zero out the charge.  
+
+EPP Removes the PR Group and Reason Codes 
+
+EPP removes the PR GP/RC and makes the adjustment GP/RC amount = the billed amount in the scenario below. This will cause the entire charge balance to move to NRP.  Adjustment group codes are CO, OA, and PI.  PR Reason Code 1, 2, 3, or 122 are excluded from this processing.
+
+The transaction includes a Reason Code that is set up to transfer with zero payment (see Attachment II – Reason Code Mapping Table), EPP removes the PR.  
+
+Provider Adjustments
+
+See Attachment III for a list of ERA Provider Adjustments and their associated clearing accounts.
+
+Non-Cash Checks
+
+EPP deletes all transactions on memo checks (i.e., non-cash) with offsetting payment transactions unless the Total Check Amount does not equal zero.  (BB will provide criteria for identifying memo checks).
+
+If check amount is zero, but it does not fit the criteria for a memo check, EPP does not delete the check since it contains denials or adjustments.
+
+Typically, checks starting with “Z” are memo checks from Blue Cross.  However, occasionally, Blue Cross includes a payment on a memo check.  If EPP identifies a non-zero “Z” check from Blue Cross, which includes detail transactions, EPP emails an alert to Finance.  EPP submits the transactions to CareConnect without modification.
+
+Other Provider Adjustments (PLB segment is valued)
+
+For provider adjustments coming in on an ERA, EPP performs the following actions.  The intent is for EPP to translate selected provider adjustment into valid payment, denial, or recoup transactions when EPP can identify the invoice and charge the provider adjustment is to be applied to.  
+
+1. Reviews all adjustment transactions and translates them when possible to allow them to post to a charge and invoice in Epic.
+2. Creates a separate transaction for the adjustment if the adjustment affects the amount on the check.  
+3. See the Deleted Transaction Section regarding 
+a. Memo-only adjustments.
+b. Adjustments on zero checks when all adjustments within the check are zero.
+c. Adjustment transactions that are only a summary of detail lines listed elsewhere in the ERA File
+d. Adjustments that net to 0 within a patient/invoice
+4. If the adjustment is for a deduction from the check to take back money from an earlier payment, EPP creates a detailed recoup transaction.
+5. If the invoice number is blank on the adjustment, 
+a. EPP matches the ICN if provided to another transaction with the same ICN and defaults the invoice number and charge information from the other transaction.
+b. If the adjustment does not have an ICN or the ICN does not match another ICN on the check with an invoice number, EPP looks for the invoice number in the Adjustment ID Number.  If the ID Number is prefixed by “P”, this is the invoice number, and EPP puts the invoice number in the Invoice Number on the transaction.
+c. Matches the HIC number on Medicare provider adjustments.  Fields/loop TBS.
+d.  If the ICN is blank on a provider adjustment, EPP puts the Adjustment ID in the ICN.
+
+ERA Adj Code in PLBDescriptionVolumePayerClearing AccountPmt AmountEPP Added GP RC CodePost to DetailFields concatenated to the ICN Number when the provider adjustment is not posted to an invoice.  Fields within the ICN are separated by a spaceEPP Processing Comments50Late ChargeLowAll PB Clearing, Late Charge< 0CO B4
+Late filing penalty YesInvoice number
+50 
+Patient NameSee Late Charge Section below50Late ChargeLowBlue Shield0CO 29
+Time limit for filing has expiredYesInvoice number 
+50 Provider adjustment code
+Patient NameWhen the late charge can be posted to a detail, EPP formats the ERA transaction as a denial and removes PLB “50” provider adjustment code segment.  
+
+If the transaction cannot be posted to an invoice, EPP deletes the transactions since this is a denial that cannot be matched to charge.
+72Authorized ReturnLowTBS90Early Payment AllowanceLow TBSB2RebateLowAllPB Clearing, Provider Bonuses and Incentives? 0UC UPAB2NoB2
+Provider NPI/Tax IDGroup/Reason Amount = zeroBN
+Provider bonusLowAllPB Clearing, Provider Bonuses and Incentives? 0UC UPABNNoBNIncludes PQRS and PCIP. These can come from any payer
+
+Group/Reason Amount = zeroCSAdjustmentLow TBSC5Temporary AllowanceLowTBSE3WithholdingMedAll???UC UPA E2E3
+Adjustment ID NumberGroup/Reason Amount = zeroFBForwarding BalanceHighAll Except Blue Shield PB Clearing, Balance ForwardUC UPAFBFBZero checks with non-zero transactions.  These typically have offsetting payments and recoups but not for the same invoice.  Therefore, these transactions need to be posted.  If any payment in the check ? 0 or not a direct offset within a charge, EPP create detail transactions for posting.  If the transaction is zero, EPP deletes the transaction.  If two transactions are direct offsets within a charge, EPP deletes both transactions.
+
+FBForwarding BalanceHighBlue Shield0FB
+FCN less 2 leading zerosEPP Delete from FileIR, WUTax WithholdMedAllPB Clearing, Tax Withhold< 0UC UIRPA
+UC UPAWUIR
+WUIR – federal tax withhold
+WU – state tax withhold
+
+Group/Reason Amount = zeroJ1Non reimbursableMedMedicare PB Clearing, OtherNoJ1If net to zero, EPP deletes the transactions.  See the Delete Transactions Section.  If the transactions do not net to zero, EPP passes the transactions to ERA.L6InterestHighAllPB Clearing, InterestNoL6No action. LSLump sum payments MedAllPB Clearing, Lump Sum? 0UC UPALS
+NoLE
+LS
+Provider NumberNote:   Medicare uses LS for additional payments.
+
+Group/Reason Amount = zeroLELevyMedAllPB Clearing, Levy ? 0UC UPALE
+NoLE
+LS
+Provider NumberGroup/Reason Amount = zeroPLPayment FinalLowTBSWOOverpayment RecoveryHighBlue ShieldPB Clearing, Overpayment RecoveryYesWOIf can be matched to a detail line, translate into detail transaction using detail line information.  If this is a separate transaction without a detail line, EPP will create a complete detail transaction if it has enough information.  If not, EPP passes the transaction to ERAWOOverpayment RecoveryHighMedicare PB Clearing, Overpayment RecoveryWO
+HIC numberWUUnspecified RecoveryLowTBSZZMutually DefinedLowTBS
+Late Charge Adjustment – Not Blue Shield
+
+Late charge adjustments reduce the amount paid.  CareConnect posts these adjustments to the charge detail as a credit adjustment using the Late Charge AR Code.  If the late charge adjustment leaves a debit balance on the charge, PB automatically credits this adjustment.
+
+If EPP is unable to match a late charge to an invoice/charge and the late charge adjustment reduces the payment amount on the check, EPP submits the transaction without the invoice number. These transactions will post to the Late Charge Clearing Account.
+
+Payment post as submitted - Full amount of the payment (i.e., includes the late charge amount) with associated CA and PR.  
+
+BB will check with Kathie Hale to determine if we can reduce the payment amount on late filing adjustments (e.g., pmt $-100, late file $+10, post payment as $90).  If not, CareConnect will post the full $100 payment, the $10 debit adjustment, and create a $10 credit adjustment, which can use a specific AR code.  Late filing adjustment must come in the AMT segment with “KH” qualifier (e.g., would be $+10 in example above).  For example, the check was $90, the payment was $100, and the late charge was $10.  EPP puts two transactions in the ERA file.  1# Payment $100; 2# Debit payment $10; total of the transactions = $90, which is the check amount.  This leaves a $10 debit balance, which is later credited off.
+
+EPP adds a UC U009 group and reason code to the payment with the Amount = zero, so the associated charge will qualify for the Late Charge Follow-Up WQ.
+
+
+
+Modifier 50 Logic
+
+Some payers make two payments on a single bilateral charge (i.e., the charge has a 50 modifier).  EPP identifies these charges by finding a matching DOS and EAP code with the charge billed amount on the payment transaction equal to half that of the original charge amount.  The transaction set will also include a transaction for the same DOS and EAP code with the correct billed amount or the original charge amount minus the 50% billed amount in the second charge. EPP lumps the payments for the charge with the full billed amount and the charge with 50% of the billed amount together and deletes the second payment transaction.  This allows Epic to post the payment to the original charge.
+
+For example,
+
+Charge DOS 11/1/12, billed amount $150 modifier 50
+ERA transactions
+1.   Charge #1 DOS 11/1/12, billed amount $100, payment $80, CA $20
+2.   Charge #2 DOS 11/1/12, billed amount $50, payment $40, CA $10
+
+EPP deletes the second transaction and revises the first transaction as follows
+
+Charge DOS 11/1/12, billed amount $150, payment $120, CA $30
+
+
+
+
+
+Denials with No Group and Reason Code
+
+On zero payments with no group and reason code, if the charge balance is zero, EPP deletes the transaction.  If the charge balance is not zero, EPP defaults the “PI” and “1” as the group and reason codes respectively.
+
+EPP Logs and Reports
+
+EPP generates the logs listed below, which it emails to various people in Cash Posting, other PBO Units, Finance, and IT.
+
+
+EmailFileSubject/LogDistributionCommentsYesNoURGENT – ERA FILE EJECTIONPB ERA Email List, which include PB Team members, MITS, and the PBO Cash Posting Assistant Director.EPP sends this email when it determines the ERA file has already been processed (i.e., it is a duplicate)YesYesERA Daily Statistical ReportPB ERA Email ListSummarizes the ERA transactions received for the day. Lists each ERA file processed with the counts and amount of the total transactions, payments, adjustments, transfers, and denials.  
+
+YesYesERA Input File “mm/dd/yy” for “payer”PB ERA Email ListLists all inbound transactions in a flat file with a 2-character message at the beginning of each row to indicate the action EPP took regarding the transaction. 
+
+The file includes a header row indentifying the fields.YesYesDuplicate Payment ReportPB ERA Email ListPayments deleted from the ERA file since the payment already posted I.e., the payment came in an earlier file).  This typically occurs when a payer is on ERA, but not EFT. 
+
+The paper check can go to HL and get into EDC file, which means UCLA gets the record of the payment twice.YesYesMemo Providers Adjustment FilePB ERA Email ListYesYUnmapped PayersPBO CP AD and PB TeamThe PB Team uses this report to update the EPP with the NAIC number for the payers that were not previously mapped in EPP.
+
+
+
+EPP Log Transaction Message Legend:  For each transaction EPP processes in the ERA file, it logs the code for the action it took along with a detail line for the transactions.  The legend below lists the Log Message Code and their descriptions.
+
+M1		EDC transaction to manually post
+P1   	Payment 
+P2		Pmt Created Credit 
+P3		Posted Negative Pmt  
+P4		Payment Posted to Clearing Account
+P5		Payment Posted to Invoice where the balance is at Guarantor
+P6 		Payment Posted to Line 1; research
+P7 		Payment Posted to another invoice
+P8		Payment Prorated across the invoice 
+P9		Payment with debit adjustment on Medicare secondary
+R1               No EDC Plan Code Mapping; logged for update to EDC Plan Mapping Table and 		reprocessing of transactions in No_EDC_Plan_Mapping Log
+S1		0 pmt; GC:CR  
+S2		 PKG EDC transaction posted to Package Clearing Account
+S3		Deleted denial and invoice not on file
+S4		Deleted 0 payment on zero charge 
+S5		Deleted Cigna Bundled Transaction where distributed to bundled charges
+S6		Deleted offsetting transactions; matched transactions by HIC number
+S7		Deleted denial; already posted
+S8 		Deleted 0 pmt on zero-balance charge
+S9 		Deleted 0 pmt and unable to match to charge
+
+
+
+
+ERA Special Processing
+Duplicate Files
+
+Duplicate file checking is being handled by EPP, so ERA does not need to do any duplicate file checking.
+
+
+Posting Provider Adjustments to Specific Clearing Accounts
+  
+ERA automatically posts provider adjustment transactions it cannot post to details to a clearing account.  PB has set up specific clearing accounts for high-volume or specialized handling provider adjustments (e.g., Interest and lump-sum have their own clearing accounts).  Low volume provider adjustments are posted in the “PB Clearing, Other” account.
+
+Provider Adjustments for Outside Vendors
+
+CareConnect does not automatically post provider adjustments to separate clearing accounts by billing office - Non-UCLA/Non-PBO Vendors.  Vendors with access to PB, manage their own clearing accounts (i.e., OBT, ALN, and McKesson).  The Cash Posting CU Unit manages the clearing accounts for vendors without access to PB (ABC and GGB).
+
+When Cash Posting identifies a provider adjustment or payment in a clearing account that belongs to an outside vendor, it manually moves the payment/provider adjustment to the outside vendor’s clearing account
+
+Rejections versus Posting to a Clearing Account
+
+1:  Patient/Invoice Rejections:  When ERA cannot post a transaction, it rejects it to the associated Remittance WQ, which holds the entire remittance.  CP must work these every morning to allow the ERA to be submitted to PB.  Rejected transactions include 
+
+a) EDC 
+b) ERA when invoice was identified but ERA cannot match the payment to a charge
+
+
+2 Unidentified Invoices (i.e., Payment is not associated with an Epic Invoice):  When ERA cannot associate the transaction with an Epic invoice, it rejects the transaction to a payer-unidentified remittance WQ.   These WQs are associated with the corresponding payer-specific clearing accounts.  See Attachment IV for the list of ERA Clearing Accounts by Payer and Billing Office.
+
+
+The payer-specific WQs are noted below.
+
+
+a) Medicare
+b) Medi-Cal
+c) Aetna
+d) Blue Cross
+e) Blue Shield
+f) BOA EDC
+g) BOA ERA
+h) UHC
+i) UCLA Managed Care 
+
+Remittance WQs
+
+Cash Posting must clear all of these WQ every day in order for the associated remittance to post.  This includes CP moving the outside vendor payments into the vendor’s clearing account.
+
+PrioRemittance WQRuleUC CodeComments1PackagePayment on package 
+
+1. Transplant or Package Account Type
+2. Embassy plan code
+3. Package plan code
+4. Package NPI or Tax ID
+CP will move payments to the patient and post as undistributed.  If it cannot locate the patient, it will post to the Package Clearing Account.2CP ALN Clearing Account WQPayment Not Associated with Patient or Invoice and the provider uses ALN as his billing office2CP McKesson Clearing Account WQPayment Not Associated with Patient or Invoice and the provider uses McKesson as his billing office2CP GGB Clearing Account WQPayment Not Associated with Patient or Invoice and the provider uses GGB as his billing office2CP OBT Clearing Account WQPayment Not Associated with Patient or Invoice and the provider uses OBT as his billing office2CP ABC Clearing Account WQPayment Not Associated with Patient or Invoice and the provider uses ABC as his billing office3BOA ERA Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3BOA EDC Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3Medicare  ERA Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3Medi-Cal EDC Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3Blue Cross ERA Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3Blue Shield EDC Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3UHC ERA Clearing Account WQRemittance processing was able to match the payment to a patient or invoice3Aetna EDC WQRemittance processing was able to match the payment to a patient or invoice4Medicare Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer – MedicareUser manually moves all payments in the WQ to the associated clearing account4Medi-Cal Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer Medi-Cal 4Blue Cross Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer Blue Cross 4Blue Shield Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer Blue Shield 3Aetna Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer Aetna3UCLA Managed Care Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer = UCLA Managed Care 3UHC Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer =UHC3Commercial Clearing Account WQPayment Not Associated with Patient or Invoice; remittance payer = any other payer
+Package Payments
+
+All package transactions reject to a Package Remittance WQ.  CP will post these transactions as undistributed to the patient every day in order for the associated remittance to post.
+
+This includes transactions with a
+
+a. Transplant or Package Account Type
+b. Embassy plan code
+c. International plan code
+d. Package NPI or Tax ID
+
+If CP cannot locate the patient to post the payment it, it posts the payment to the Package Clearing Account.
+
+
+Posting Contractual Adjustments on Denials
+
+ERA does not post an adjustment on denials except in the scenarios listed below.
+
+1 ERA post the CO adjustment based on Reason Code and payer when the CO is with a denial that has a PR transfer Reason Code and the PR Reason Code is set up to transfer (i.e., PR reason code = 1, 2, 3, or 122).
+
+2 ERA posts the CO adjustment when 
+
+1. Payer = Medi-Cal
+2. AND Claim is Medi-Cal secondary
+3. AND Transaction includes a CO-45 contractual adjustment
+4. AND Payment = zero.
+
+Retaining the ERA Payer  
+
+UCLA receives a high volume of payments from a payer other than the one on the invoice.  This occurs when:  (1) patient is registered under a generic plan and Office Ally identifies the correct payer and sends the claim to the right place or (2) the payer sends the claim onto another payer 
+
+CareConnect performs the following special processing:
+
+1. Payments post via ERA even though the ERA payer does not match the invoice. To accommodate this, Epic has disabled the payer matching requirement, so payments will post even though the payer on the ERA does not match the invoice.
+
+2. Payments must reflect actual payer, not the invoice payer, since 
+
+i. For manual payment posting, the user can select the payer who is making the payment. This overrides the invoice payer. 
+ii. UCLA needs to track payments by payer for contracting, modeling, payer mix, and other financial reporting.  
+iii. MPV needs to know who paid, so it can appropriately assess the payment against the payer’s contract.  
+iv. The adjudication needs to be applied correctly otherwise UCLA could take inappropriate contractual adjustments or it could inappropriately drop balances to patients. 
+
+Therefore, CareConnect ERA processing will map the N104 on the ERA transaction to the Payer ID Mapping Table to capture the payer making the payment. By setting up the Payer ID Mapping Table, which can be at the payer or plan level, in the Payer Master; Epic can post the payment with the ERA payer as the payment payer.
+1. On individual ERAs (e.g. Medicare, Medi-Cal, Blue Cross, Blue Shield, and UHC), CareConnect will map using the ERA payer
+2. For HL ERA, CareConnect will map the payer the value in N104 (Payee Identification Code) to a payer. This retains the payer/plan that made the payment.  
+
+This works regardless of the payer on the claim (e.g., Office Ally sends a claim for a generic payer to Aetna and Aetna remits on its ERA). 
+
+
+3. For EDC, UCLA will map the payers IDs in N104 to the Payer ID Mapping Table in the Payer (Plan) Master.
+
+House Staff 
+
+ERA does not post a transfer on house staff (plan code 10030133-10030137) when the PR is 1, 2 3, or 122.  Instead, it posts a second C/A using the House Staff AR Codes (PR 1 Deductible AR Code 603; PR 2 Coinsurance AR Code 604; PR 3 Copayment AR Code 605).  
+
+The House Staff payment and contractual allowance transactions use the standard payment and adjustment codes.  
+
+ERA allows transfers for non-covered HS services to NRP, so they will bill to the house staff.  If the guarantor complaints, PBO provides the guarantor with a self-pay discount.  
+
+This is done at the group and reason code level.
+ERA Transaction Codes 
+
+ERA use a single payment, adjustment, and transfer code for all payers.  It stamps the payer on the payment and adjustment transaction for reporting.
+
+Reason Codes 
+Transfer to NRP Reason Codes
+
+On zero payments, CareConnect performs a transfer along with posting the zero payment if the transaction has a PR Group Code and a Reason Code set up to transfer with a zero payment for the payer.  
+
+Obsolete Reason Codes
+CareConnect ERA processing translates obsolete Reason Codes into active Reason Codes (e.g., 42 is translated to 45).
+
+PB Processing
+PB Claims
+
+PB claims strips UC Group and Reason Codes from all claims.
+
+PB Credit WQ
+
+PB qualifies credits to various credit WQs.  PB performs automated activities on some of these credit WQs including debiting the credit amount to zero out the charge.  Other credit WQs are worked manually by the PBO staff.
+
+ScenarioCredit WQRuleAuto Post Debit to Zero BalanceUC CodeAR CodeComments1. Interest Payments All interest payments are posted to PB Clearing, Interest.  
+Yes2. Provider Adjustments – Non-GovernmentProvider adjustment is not associated with an invoice and the Payer = non-government and debit balance < $50
+Yes
+Excludes provider adjustments that are directed to other WQs (e.g., interest, bonuses)3. Provider Adjustments - GovernmentProvider adjustment is not associated with an invoice and payer = government and debit balance < $5.00
+Yes
+Excludes provider adjustments that are directed to other WQs (e.g., interest, bonuses)4. Payments with recoups and the net is more money to UCLAPayer = non-government and balance after posting both transactions < zero (i.e., UCLA got more money)
+
+YesThis includes Expected Reimbursement and MPV. 
+
+This needs to account for a decreased PR amount (i.e., if the PR was less on the recoup transaction set than on the original payment, the debit adjustment is reduced by the amount of the PR that will be transferred back to the invoice.5. Secondary PaymentExcluding Medicare, PB debits back the credit amount created by the secondary payment.  This accommodates the payer paying per their fee schedule.
+
+
+
+Yes6. SELF-PAY - Admin Adj on Any ChargeOn payments where the charge has never received a payment (i.e., the charge was adjusted without payment, so the payment is the original payment from the payer)YesCreate an automated process to remove the administrative adjustment, so the credit balance is absorbed.7. Insurance - Overpayment/Admin Adj on ChargeOn payments where the charge had an administrative adjustment.  Includes secondary.YesCreate an automated process to remove the administrative adjustment, so the credit balance is absorbed.
+Interest payments
+
+Interest payments are posted to the PB Interest Clearing Account and stamped with the department on the transactions.  
+
+PB will establish a credit WQ for all payments in this clearing account. This credit WQ will automatically triggers a batch job to add a debit on each open payment to bring the balance to zero.  See the Provider Adjustment Table for more information.
+
+
+Reporting
+
+CareConnect Remittance Reports 
+
+1. Remittance report -  printed after processing each remittance run:
+	https://documentation.epic.com/DataHandbook/Reports/Details/1014168
+
+2. Remittance payment report -  based on the transaction instead of the remittances themselves.  This report allows end users to filter by the run:
+	https://documentation.epic.com/DataHandbook/Reports/Details/1014166
+
+3. Remittance summary report - shows a summary of unprocessed runs and processed clean/error runs:
+       https://documentation.epic.com/DataHandbook/Reports/Details/1014170”
+
+4. Generic Commercial Payer ID on Non-Generic Plan
+
+Lists ERA payment transactions with a payment date in the last week where the Payment Payer ID is the generic commercial payer and the invoice plan code is not a generic payer.
+
+
+
+HealthLogic Requirements
+
+For the payers sending ERA files to HealthLogic, HealthLogic needs to include the same NAIC # for a given ERA payer, not multiple NAIC # for each payer.  The NAIC mapping table to HL ERA payers is TBS.
+
+
+Cash Posting Procedures
+
+CP must work all remittance WQs every day, so the remittance can posts.  This includes the vendor and payer-specific clearing account WQs.
+
+CP reverses the original transaction when it distributes lump payments.  This process removes the charge from any associated WQs and prevents erroneous information from going out on secondary claims.
+
+CP completes all “U” codes on payments when it satisfies the associated rejection reason. This prevents these codes from qualifying the payment back into the associated WQ.
+
+Attachment I - ACH to Department Mapping Table
+
+TBS by BB.
+Attachment II – ERA Reason Code Action Table
+
+Remit Code IDRemit Code NameRMC External IDRMC External ID (num)WPC CLAIM ADJUSTMENT REASON CODERMC Action for CA, OA, PI, PR (DEFAULT PB RMT ACTION)
+With PMTOverride Action with PR (3)Zero Payment override (2)Zero Pmt Medicare, Medi-Cal (1)11-DEDUCTIBLE AMOUNT11REASONNRP   22-COINSURANCE AMOUNT22REASONNRP   33-CO-PAYMENT AMOUNT33REASONNRP   44-PX INCONS W/ MODIF/REQD MODIF MISSNG.44REASONNAA  Denied 55-PX/BILL TYPE INCONSISTENT W/ POS.55REASONNAA  Denied 66-PX/REV CODE INCONS W/ PATIENT’S AGE.66REASONNAA  Denied 77-PX/REV CODE INCONS W/ PATIENT GENDER.77REASONNAA  Denied 88-PX INCONS W/ PRVDR TYPE/SPECIALTY.88REASONNAA  Denied 99-DX INCONSISTENT W/ PATIENT’S AGE.99REASONNAA  Denied 1010-DX INCNSISTNT WITH PATIENT'S GENDER.1010REASONNAA  Denied 1111-DX INCONSISTENT WITH PX.1111REASONNAA  Denied 1212-DX INCONSISTENT WITH PRVDR TYPE.1212REASONNAA  Denied 1313-DATE OF DEATH PRECEDES DATE OF SVC.1313REASONNAA  Denied 1414-DOB FOLLOWS DATE OF SVC.1414REASONNAA  Denied 1515-DNIED, AUTH # MISSING OR INVALID.1515REASONNAA  Denied 1616-LACKS INFO NEEDED FOR ADJUDICATION.1616REASONNAA  Denied 1818-DUPLICATE CLAIM/SERVICE.1818REASONNAA  Denied 1919-DENIED, LIABILITY OF WRK CMP CARRIER.1919REASONNAA  Denied 2020-DNIED, INJ/ILL CVD BY LIAB CARRIER.2020REASONNAA  Denied 2121-DENIED, LIABLTY OF NO-FAULT CARRIER.2121REASONNAA  Denied 2222-DNIED/RDCD, MAY BE CVD BY OTHR PAYOR.2222REASONNAA  Denied 2323-ADJ, IMPCT OF PRIOR PAYOR ADJUD.2323REASONNAA  Denied 2323-ADJ, IMPCT OF PRIOR PAYOR ADJUD.2323REASONNAA  Denied 2323-ADJ, IMPCT OF PRIOR PAYOR ADJUD.2323REASONNAA  Denied 2424-CHGS CVD UNDER CAPIT AGRMT/MGD CARE.2424REASONNAA  Denied 2626-EXPENSES INCURRED PRIOR TO COVERAGE.2626REASONNAA  NRP 2727-EXPENSES INCRRD AFTR CVG TERMINATED.2727REASONNAA  NRP 2929-TIME LIMIT FOR FILING HAS EXPIRED.2929REASONNAA  Denied 3131-DENIED, PAT CANT BE ID AS OUR INSRD.3131REASONNAA  NRP 3131-DENIED, PAT CANT BE ID AS OUR INSRD.3131REASONNAA  NRP 3232-DEPENDENT NOT ELIG FOR CVG.3232REASONNAA  NRP 3333-DENIED, INSRD HAS NO DEPENDENT CVG.3333REASONNAA  NRP 3434-DENIED, INSRD HAS NO NEWBORN CVG.3434REASONNAA  NRP 3535-BENEFIT MAXIMUM HAS BEEN REACHED.3535REASONNAA  NRP 3535-BENEFIT MAXIMUM HAS BEEN REACHED.3535REASONNAA  NRP 3535-BENEFIT MAXIMUM HAS BEEN REACHED.3535REASONNAA  NRP 3838-SVCS NOT PRVD/AUTH BY DESIG PRVDRS.3838REASONNAA  Denied 3939-SVCS DNIED @ TIME PRECERT/AUTH REQST.3939REASONNAA  Denied 4040-CHGS DONT QUALIFY FOR ER/URGNT CARE.4040REASONNAA  NRP 4444-PROMPT-PAY DISCOUNT.4444REASONNAA  Denied 1002A2-CONTRACTUAL ADJUSTMENT.4545REASONNAA  Denied 455-CHGS EXCD FEE SCH/MAX ALLOWABLE.4545REASONNAA  Denied 4949-NON-CVD, SCRNING IN CONJ W/ RTN EXAM.4949REASONNAA  NRPDenied5050-NON-CVD, NOT DEEMED MED NECESSITY.5050REASONNAA  NRPDenied5151-NON-CVD, PRE-EXISTING CONDITION.5151REASONNAA  NRPDenied5353-SVCS BY IMMD. REL/HSHLD MBR NOT CVD.5353REASONNAA  NRPDenied5454-MULT PHYSICIANS/ASSISTANTS NOT CVD.5454REASONNAA  Denied 5555-DENIED, PX DEEMED EXPERIMENTAL.5555REASONNAA  Denied 5656-DENIED, PX NOT 'PROVEN EFFECTIVE.'5656REASONNAA  Denied 5858-DENIED, TRTMT ADMIN IN INVLD POS.5858REASONNAA  Denied 5959-RDCD/DENIED, MULT CONCURRNT PX RULES.5959REASONNAA  Denied 5959-RDCD/DENIED, MULT CONCURRNT PX RULES.5959REASONNAA  Denied 6060-OP SVCS W/ THIS PRXMTY TO IP NOT CVD.6060REASONNAA  Denied 6161-PNLTY, FAIL TO OBTN 2ND SURG OPIN.6161REASONNAA  Denied 6666-BLOOD DEDUCTIBLE.6666REASONNAA  Denied 6666-BLOOD DEDUCTIBLE.6666REASONNAA  Denied 6666-BLOOD DEDUCTIBLE.6666REASONNAA  Denied 6969-DAY OUTLIER AMOUNT.6969REASONNAA  Denied 6969-DAY OUTLIER AMOUNT.6969REASONNAA  Denied 7070-COST OUTLIER AMOUNT.7070REASONNAA  Denied 7070-COST OUTLIER AMOUNT.7070REASONNAA  Denied 7474-INDIRECT MED EDUCATION ADJUSTMENT.7474REASONNAA  Denied 7575-DIRECT MEDICAL EDUCATION ADJUSTMENT.7575REASONNAA  Denied 7676-DISPROPORTIONATE SHARE ADJUSTMENT.7676REASONNAA  NRP 7878-NON-CVRD DAYS/ROOM CHARGE ADJUSTMENT.7878REASONNAA  NRPDenied7878-NON-CVRD DAYS/ROOM CHARGE ADJUSTMENT.7878REASONNAA  NRPDenied7878-NON-CVRD DAYS/ROOM CHARGE ADJUSTMENT.7878REASONNAA  NRPDenied8585-PATIENT INTEREST ADJ.8585REASONNAA  Denied 8989-PROF FEES REMOVED FROM CHARGES.8989REASONNAA  Denied 9090-INGREDIENT COST ADJUSTMENT.9090REASONNAA  Denied9191-DISPENSING FEE ADJUSTMENT.9191REASONNAA  Denied9494-PROCESSED IN EXCESS OF CHARGES.9494REASONNAA  Denied9595-DENIED/REDUCED. PLAN PX NOT FOLLOWED.9595REASONNAA  Denied9696-NON-COVERED CHARGES.9696REASONNAA  NRPDenied9797-PMT INCL IN PMT FOR OTHR SVC/PX.9797REASONNAA  Denied100100-PMT MADE TO PAT/INSRD/RSPNSBLE PTY.100100REASONNRP100100-PMT MADE TO PAT/INSRD/RSPNSBLE PTY.100100REASONNRP100100-PMT MADE TO PAT/INSRD/RSPNSBLE PTY.100100REASONNRP101101-PREDET: PMT UPON CMPLT SVC/CLM ADJUD101101REASONNAA  Denied101101-PREDET: PMT UPON CMPLT SVC/CLM ADJUD101101REASONNAA  Denied101101-PREDET: PMT UPON CMPLT SVC/CLM ADJUD101101REASONNAA  Denied103103-PROVDR PROMO DISCOUNT (E.G. SENIOR)103103REASONNAA  Denied104104-MANAGED CARE WITHHOLDING.104104REASONNAA  Denied104104-MANAGED CARE WITHHOLDING.104104REASONNAA  Denied105105-TAX WITHHOLDING.105105REASONNAA  Denied106106-PATNT PYMT OPTN/ELECTN NOT IN EFFCT.106106REASONNAA  NRPDenied106106-PATNT PYMT OPTN/ELECTN NOT IN EFFCT.106106REASONNAA  NRPDenied106106-PATNT PYMT OPTN/ELECTN NOT IN EFFCT.106106REASONNAA  NRPDenied107107-DENIED, RELTD/QUALIF CLM/SVC NOT ID.107107REASONNAA  Denied108108-DNIED/RDCD, RENT/PURCH GUIDE NOT MET108108REASONNAA  Denied108108-DNIED/RDCD, RENT/PURCH GUIDE NOT MET108108REASONNAA  Denied109109-NOT CVD BY PAYOR. SND TO CRRCT PAYOR109109REASONNAA  NRPDenied110110-BILLING DATE PREDATES SERVICE DATE.110110REASONNAA  NRP111111-NOT CVD UNLESS PRVDR ACCPTS ASSGNMT.111111REASONNAA  NRPDenied112112-DNIED, SVC NOT PRVD TO PT/NOT DCMTD.112112REASONNAA  Denied114114-PX/PRODUCT NOT APPROVED BY FDA.114114REASONNAA  Denied115115-DNIED/RDCD, PX PSTPND, CNCLLD,DLAYD.115115REASONNAA  Denied116116-DNIED, ADV INDEMN NOTE DOESNT CMPLY.116116REASONNAA  Denied117117-DNIED/RDCD, TRNS CVD 2 NEARST FACLTY117117REASONNAA  Denied117117-DNIED/RDCD, TRNS CVD 2 NEARST FACLTY117117REASONNAA  Denied117117-DNIED/RDCD, TRNS CVD 2 NEARST FACLTY117117REASONNAA  Denied118118-ESRD NETWORK SUPPORT ADJUSTMENT.118118REASONNAA  Denied119119-BENFT MAX 4 TIME PD/OCCURNCE PASSED.119119REASONNRP121121-INDEMNIFICATION ADJUSTMENT.121121REASONNAA  Denied122122-PSYCHIATRIC REDUCTION.122122REASONNRP122122-PSYCHIATRIC REDUCTION.122122REASONNRP125125-DENIED/ RDCD, SUBMISS/BILLNG ERRORS.125125REASONNAA  Denied128128-NEWBRN SVCS CVD IN MOTHER'S ALLWNCE.128128REASONNAA  Denied129129-DENIED, PRIOR PROCSSNG INFO INCRRCT.129129REASONNAA  Denied130130-PAPER CLAIM SUBMISSION FEE.130130REASONNAA  Denied131131-CLAIM SPECIFIC NEGOTIATED DISCOUNT.131131REASONNAA  Denied132132-PREARRANGED DEMO PROJECT ADJSTMT.132132REASONNAA  Denied133133-DISPOSITION OF CLM/SVC PEND REVIEW.133133REASONNAA  Denied134134-TECHNICAL FEES REMOVED FROM CHARGES.134134REASONNAA  Denied135135-DENIED, INTRM BILLS CANNOT BE PROCSD.135135REASONNAA  Denied136136-DENIED/RDUCD. CVG RULES NOT FOLLWD.136136REASONNAA  Denied137137-REG SRCHGS, ASSMTS, ALLWCE, HLTH TX.137137REASONNAA  Denied137137-REG SRCHGS, ASSMTS, ALLWCE, HLTH TX.137137REASONNAA  Denied137137-REG SRCHGS, ASSMTS, ALLWCE, HLTH TX.137137REASONNAA  Denied138138-DENIED, APPEAL PXS NOT FOLLOWED.138138REASONNAA  Denied139139-CONTR. FUNDING AGREEMNT - SUBSC. EMPLOYE139139REASONNAA  Denied140140-PAT/INSRD HLTH ID #/NAME DONT MATCH.140140REASONNAA  NRP142142-MNTHLY MEDICAID PATIENT LIABLTY AMT.142142REASONNRP142142-MNTHLY MEDICAID PATIENT LIABLTY AMT.142142REASONNRP142142-MNTHLY MEDICAID PATIENT LIABLTY AMT.142142REASONNRP143143-PORTION OF PAYMENT DEFERRED.143143REASONNAA  Denied144144-INCENTIVE ADJUSTMENT144144REASONNAA  Denied146146-DENIED, DX INVALID FOR DATE OF SVC.146146REASONNAA  Denied147147-PRVDR RATE EXPIRED/NOT ON FILE.147147REASONNAA  Denied148148-RJCTD, INFO FRM OTHR PRVDR INCMPLT.148148REASONNAA  Denied149149-LIFETM BENFT FOR SVC CATEGRY REACHD.149149REASONNRP150150-PYMT ADJSTD, LVL OF SVC NOT SUPPTD.150150REASONNAA  Denied151151-PMT ADJ, # OF SVCS NOT SUPPTD.151151REASONNAA  Denied152152-PMT ADJ, SVC LNGTH NOT SUPPTD.152152REASONNAA  Denied153153-PMT ADJ, DOSAGE NOT SUPPTD.153153REASONNAA  Denied154154-PMT ADJ, DAY’S SUPPLY NOT SPPRTD.154154REASONNAA  Denied155155-CLM DENIED, PATNT REFSD SVC/PX.155155REASONNAA  Denied157157-DENIED/RDCD, SVC/PX PRVD BC OF WAR.157157REASONNAA  Denied158158-DENIED/RDCD, SVC/PX PRVD OUTSD US.158158REASONNAA  Denied159159-DNIED/RDCD, SVC/PX RSLT OF TERRORSM.159159REASONNAA  Denied160160-DNIED/RDCD, ACTVY EXCL FRM BENFTS.160160REASONNRP160160-DNIED/RDCD, ACTVY EXCL FRM BENFTS.160160REASONNRP160160-DNIED/RDCD, ACTVY EXCL FRM BENFTS.160160REASONNRP161161-PROVIDER PERFORMANCE BONUS161161REASONNAA  Denied162162-STATE REQMT FOR PRPRTY/CASUALTY162162REASONNAA  Denied163163-CLM/SVC ADJ, ATTCHMT NOT RCVD.163163REASONNAA  Denied164164-CLM/SVC ADJ, ATCHMT NOT RCVD IN TIME164164REASONNAA  Denied165165-PMT DNIED/RDCD, REFRL ABSNT/EXCDED.165165REASONNAA  Denied166166-SVCS SUB AFTER CLMS PROCSS DEADLN.166166REASONNAA  Denied167167-DX(S) NOT COVERED.167167REASONNAA  Denied168168-PMT DNIED, NOT CVD W/ DENTAL PLAN.168168REASONNRP169169-PMT ADJ, ALT BENFT PROVD.169169REASONNAA  Denied170170-DNIED, WHN PERF/BILLED BY PRVD TYPE.170170REASONNAA  Denied171171-DNIED, PERF/BILL BY PRVDR IN FACLTY.171171REASONNAA  Denied172172-ADJ, PERF/BILLED BY SPECLTY PRVDR.172172REASONNAA  Denied173173-PMT ADJ, SVC NOT PRSCRBD BY PHYSCN.173173REASONNAA  Denied174174-DENIED, SVC NOT PRSCBD BEFR DELVRY.174174REASONNAA  Denied175175-DENIED, PRESCRIPTION INCOMPLETE.175175REASONNAA  Denied176176-DENIED, PRESCRIPTION NOT CURRENT.176176REASONNAA  Denied177177-DENIED, ELIGIBILITY REQS NOT MET.177177REASONNRP178178-PMT ADJ, SPEND DOWN REQMTS NOT MET.178178REASONNRP178178-PMT ADJ, SPEND DOWN REQMTS NOT MET.178178REASONNRP179179-PMT ADJ, PT. WAITING REQMTS NOT MET.179179REASONNRP179179-PMT ADJ, PT. WAITING REQMTS NOT MET.179179REASONNRP180180-PMT ADJ, RESIDENCY REQMTS NOT MET.180180REASONNRP180180-PMT ADJ, RESIDENCY REQMTS NOT MET.180180REASONNRP181181-PMT ADJ, PX CODE INVLD ON DT OF SVC.181181REASONNAA  Denied182182-ADJ, MODIFIER INVALD ON DATE OF SVC.182182REASONNAA  Denied183183-REF PRVDR NOT ELIGIBLE TO REFER SVC.183183REASONNAA  Denied184184-PRVDR NOT ELIG TO ORDR SVC BILLED.184184REASONNAA  Denied185185-PRVDR NOT ELIG TO PERF SVC BILLED.185185REASONNAA  Denied186186-PMT ADJ, LEVEL OF CARE CHANGE.186186REASONNAA  Denied187187-HEALTH SAVINGS ACCOUNT PAYMENTS187187REASONNRP188188-PROD/PX CVD WHN USED PER FDA RECS.188188REASONNAA  Denied189189-INCRRCT PX CODE BILLED FOR PX/SVC.189189REASONNAA  Denied190190-PMT INCL IN ALLWCE 4 SNF QUAL STAY.190190REASONNAA  Denied191191-DENIED, NOT WORK RELTD ILLNSS/INJRY.191191REASONNAA  Denied192192-NON STD ADJ CODE FOR PAPER REMTTNCE.192192REASONNAA  Denied193193-ORIG PMT DECSN STDS; FRST CLM CRCT.193193REASONNAA  Denied194194-ADJ, ANES PERF BY OP/AP/ASST SURGN.194194REASONNAA  Denied195195-DENIED, RFND ISSUED TO WRONG PAYOR.195195REASONNAA  Denied197197-PMT DEN/RDCD, NO PRECERT/AUTH/NOTIF.197197REASONNAA  Denied198198-PMT DEN/RDCD, PRECERT/AUTH EXCEEDED.198198REASONNAA  Denied199199-REV CODE AND PX CODE DO NOT MATCH.199199REASONNAA  Denied200200-EXPENSES INCURRED DURING CVG LAPSE.200200REASONNRP201201-PAT RESP, MEDICARE WC/OTHR AGRMT.201201REASONNRP202202-ADJ, PRSNL CMFT/CONVENIENCE NOT CVD.202202REASONNRP203203-PYMT ADJ, DISCONT/REDUCED SVC.203203REASONNAA  Denied204204-SVC/EQUIP/DRUG NOT CVD UNDER PLAN.204204REASONNRP205205-PHARMACY DISC CARD PROCESSING FEE.205205REASONNAA  Denied206206-NPI MISSING.206206REASONNAA  Denied207207-NPI INVALID FORMAT.207207REASONNAA  Denied208208-NPI NOT MATCHED.208208REASONNAA  Denied209209-PER REG AGRMT CANT BILL PT, BILL NRP209209REASONNRP210210-ADJ, PRECRT/AUTH NOT RECVD TIMELY.210210REASONNAA  Denied211211-NDC NOT ELIG FOR REBATE, NOT CVD.211211REASONNAA  Denied212212-ADMIN SURCHARGE NOT COVERED.212212REASONNAA  Denied213213-NON-COMPLIANCE WITH THE PHYSICIAN SELF REFERRAL213213REASONNAA  Denied214214-WORK COMP CLAIM NON-COMPENSABLE, PAYER NOT LIABLE214214REASONNAA  Denied215215-BASED ON SUBROGATION OF A THIRD PARTY SETTLEMENT215215REASONNAA  Denied216216-BASED ON THE FINDINGS OF A REVIEW ORGANIZATION216216REASONNAA  Denied217217-BASED ON PAYER REASONABLE AND CUSTOMARY FEES217217REASONNAA  Denied218218-BASED ON ENTITLEMENT TO BENEFITS218218REASONNAA  Denied219219-BASED ON EXTENT OF INJURY219219REASONNAA  Denied220220-FEE SCHEDULE DOES NOT CONTAIN THE PX220220REASONNAA  Denied221221-WORKER COMPENSATION CLAIM IS UNDER INVESTIGATION221221REASONNAA  Denied222222-EXCEEDS MAX NUMBER OF HOURS/DAY/UNITS222222REASONNAA  Denied223223-ADJ CODE FOR REGULATION N/C BY OTHER CODE223223REASONNAA  Denied224224-ID VERIFICATION REQUIRED FOR PROCESSING CLAIMS224224REASONNAA  Denied225225-PENALTY OR INTEREST PAYMENT BY PAYER225225REASONNAA  Denied226226-INFO REQSTD FROM PROVIDER NOT GIVEN. REMARK CODE NEEDED226226REASONNAA  Denied227227-INFO REQSTD FROM PATIENT/INSURED NOT PROVIDED/INCOMPLETE227227REASONNAA  NRP228228-DENIED PRVDR DIDN'T SUPPLY REQSTD INFO TO PREVIOUS PAYER228228REASONNAA  Denied229229-PARTIAL CHARGE AMT IGNORED B/C INITIAL TOB 12X229229REASONNAA  Denied230230-NO AVAILABLE CPT/HCPCS CODE TO DESCRIBE THIS SERVICE230230REASONNAA  Denied231231-MUTUALLY EXCLUSIVE PRODUCERES CANT BE DONE SAME DAY/SETTING231231REASONNAA  Denied232232-INSTITUTIONAL NRP AMMOUNT232232REASONNAA  Denied233233-SERVICES/CHARGES RELATED TO THE TREATMENT OF A HOSPITAL-ACQUIRED CONDITION OR PREVENTABLE MEDICAL ERROR.233233REASONNAA  Denied234234-THIS PROCEDURE IS NOT PAID SEPARATELY. AT LEAST ONE REMARK CODE MUST BE PROVIDED (MAY BE COMPRISED OF EITHER THE NCPDP REJECT REASON CODE, OR REMITTANCE ADVICE REMARK CODE THAT IS NOT AN ALERT.)234234REASONNAA  Denied235235-SALES TAX235235REASONNAA  Denied236236-THIS PX OR PX/MODIFIER COMBO NOT COMPATIBLE WITH ANOTHER PX OR PX/MODIFIER COMBO PROVIDED ON THE SAME DAY ACCORDING TO THE NCC236236REASONNAA  Denied237237-LEGISLATED/REGULATORY PENALTY. AT LEAST ONE REMARK CODE MUST BE PROVIDED (MAY BE COMPRISED OF EITHER THE NCPDP REJECT REASON CODE, OR REMITTANCE ADVICE REMARK CODE THAT IS NOT AN ALERT.)237237REASONNAA  Denied238238-SEPARATE CLAIM FOR MOTHER/BABY CHARGES.238238REASONNAA  Denied252252-AUTHORIZATION/CERTIFICATION NUMBER.252252REASONNAA  Denied1000A0-PATIENT REFUND AMOUNT.A0A0REASONNAA  Denied1001A1-CLAIM/SVC DENIED.A1A1REASONNAA  Denied1005A5-MEDIC CLM PPS CAPITL CST OUTLR AMT.A5A5REASONNAA  Denied1006A6-PRIOR HOSP/30 DAY XFER REQ NOT MET.A6A6REASONNAA  Denied1007A7-PRESUMPTIVE PAYMENT ADJUSTMENTA7A7REASONNAA  Denied1008A8-CLAIM DENIED; UNGROUPABLE DRGA8A8REASONNAA  Denied2001B1-NON-COVERED VISITS.B1B1REASONNRP2001B1-NON-COVERED VISITS.B1B1REASONNRP2001B1-NON-COVERED VISITS.B1B1REASONNRP2010B10-ALLWD AMT RDCD, CMPT OF BSC PX PAID.B10B10REASONNAA  Denied2011B11-NOT CVRD BY THIS PAYOR, XFERRD.B11B11REASONNAA  NRPDenial2011B11-NOT CVRD BY THIS PAYOR, XFERRD.B11B11REASONNAA  NRPDenial2011B11-NOT CVRD BY THIS PAYOR, XFERRD.B11B11REASONNAA  NRPDenial2012B12-SVCS NOT DOCMTD IN PAT MED RECORD.B12B12REASONNAA  Denied2013B13-PREV PAID, PMT PRVD IN PREV PYMT.B13B13REASONNAA  Denied2014B14-DENIED, 1 VISIT PER PHYS PER DAY.B14B14REASONNAA  Denied2015B15-QUALF OTHR PX/SVC NOT RCVD/ADJUD.B15B15REASONNAA  Denied2016B16-DENIED/RDCD, NEW PAT QUALIF NOT MET.B16B16REASONNAA  Denied2020B20-DENIED/RDCD, SVC PROV BY OTHR PRVDR.B20B20REASONNAA  Denied2022B22-ADJ, BASED ON DIAGNOSIS.B22B22REASONNAA  Denied2023B23-PX NOT AUTH PER CLIA PROFICNCY TEST.B23B23REASONNAA  Denied2004B4-LATE FILING PENALTY.B4B4REASONNAA  Denied2005B5-PMT ADJ, CVG GUIDELNS NO MET/EXCD.B5B5REASONNAA  Denied2007B7-PRVDR NOT ELIG 4 PMT ON DATE OF SVC.B7B7REASONNAA  Denied2008B8-NOT CVD, ALT SVCS AVAILABLE.B8B8REASONNAA  Denied2009B9-NOT CVD, PATIENT ENROLLED IN HOSPICE.B9B9REASONNAA  Denied7000W1-WORK COMP STATE FEE SCHED ADJ.W1W1REASONNAA  Denied7002W2-PAYMENT REDUCED OR DENIED BASED ON WORKERS' COMPENSATION JURISDICTIONAL REGULATIONS OR PAYMENT POLICIES, USE ONLY IF NO OTHER CODE IS APPLICABLE.W2W2REASONNAA  Denied
+
+
+Attachment III - ERA Clearing Accounts for Provider Adjustments
+
+PLB CODEPLB DESCAccount ID in PRODGuar name50LATE CHARGE900000067PBCLEARING, PLB 50 LATE CHARGE51INTEREST PENALTY900000068PBCLEARING, PLB 51 INTEREST PENALTY72AUTHORIZED RETURN900000076PBCLEARING, OTHER90EARLY PAYMENT900000076PBCLEARING, OTHERAMAPPLIED TO BORROWER900000076PBCLEARING, OTHERAPACCELERATED BENEFIT900000076PBCLEARING, OTHERB2REBATE900000069PBCLEARING, PLB BN BONUS AND INCENTIVESB3RECOVERY ALLOWANCE900000076PBCLEARING, OTHERBDBAD DEBT ADJUSTMENT900000076PBCLEARING, OTHERBNBONUS900000069PBCLEARING, PLB BN BONUS AND INCENTIVESC5TEMPORARY ALLOWANCE900000076PBCLEARING, OTHERCharge RouterCAPITATION INTEREST900000068PBCLEARING, PLB 51 INTEREST PENALTYCSADJUSTMENT900000076PBCLEARING, OTHERCTCAPITATION PAYMENT900000076PBCLEARING, OTHERCVCAPITAL PASSTHRU900000076PBCLEARING, OTHERCWCRNA PASSTHRU900000076PBCLEARING, OTHERDMDIRECT MEDICAL EDUC900000076PBCLEARING, OTHERE3WITHHOLDING900000076PBCLEARING, OTHERFBFORWARD BALANCE900000070PBCLEARING, PLB FB FORWARD BALANCEFCFUND ALLOCATION900000077PBCLEARING, PLB FC FUND ALLOCATIONGOGRAD MEDIAL EDUC900000078PBCLEARING, PLB GO GRAD MEDIAL EDUCIPINCENTIVE PREM PAY900000069PBCLEARING, PLB BN BONUS AND INCENTIVESIRIRS WITHHOLDING900000071PBCLEARING, PLB IR IRS WITHHOLDINGISINTERIM SETTLEMENT900000076PBCLEARING, OTHERJ1NON-REIMBURSABLE900000076PBCLEARING, OTHERL3PENALTY900000076PBCLEARING, OTHERL6INTEREST OWED900000068PBCLEARING, PLB 51 INTEREST PENALTYLELEVY900000072PBCLEARING, PLB LE LEVYLSLUMP SUM900000069PBCLEARING, PLB BN BONUS AND INCENTIVESOAORGAN ACQUISITION900000073PBCLEARING, PLB OA ORGAN ACQUISITIONOBOFFSET AFFILIATED PV900000076PBCLEARING, OTHERPIPERIODIC INTERIM PAY900000076PBCLEARING, OTHERPLPAYMENT FINAL900000076PBCLEARING, OTHERRARETRO ADJUSTMENT900000076PBCLEARING, OTHERRERETURN TO EQUITY900000076PBCLEARING, OTHERSLSTUDENT LOAN REPAY900000076PBCLEARING, OTHERTLTHIRD PARTY LIABILITY900000074PBCLEARING, PLB TL THIRD PARTY LIABILITYWOOVERPAYMENT RECOV900000075PBCLEARING, PLB WO OVERPAYMENT RECOVWUUNSPECIFIED RECOV900000076PBCLEARING, OTHERZZMUTUALL DEFINED900000076PBCLEARING, OTHERNot mappedPBCLEARING, DEFAULT
+
+ERA Clearing Accounts by Payer and Billing Office
+
+
+Payer/Billing OfficeCommentsAccount ID in PRODGuar nameMedicareUnidentified invoices post into an associated remittance WQ.  
+
+CP moves these to payments into the clearing account including the payments in the outside vendors’ WQs900000083PBCLEARING, MEDICAREMedi-Cal900000084 PBCLEARING, MEDI-CALAetna 900000085
+PBCLEARING, AETNA
+Blue Cross900000086PBCLEARING, BLUE CROSSBlue Shield 900000087PBCLEARING, BLUE SHIELDUCLA Managed Care 900000088PBCLEARING, UCLA MANAGED CAREUnited Healthcare900000089PBCLEARING, UNITED HEALTHCAREBOA ERA Mixed Payers900000090PBCLEARING, BOA ERA MIXEDBOA EDC900000091PBCLEARING, BOA EDC 
+HEALTHNET900000093PBLCEARING, HEALTHNETCIGNA900000094
+PBCLEARING, CIGNAMcKesson900000081PBCLEARING, MCKESSONALN 900000079PBCLEARING, ALNGGB900000082PBCLEARING, GGBABC900000080PBCLEARING, ABCOBT900000092PBCLEARING, OBT
+Attachment IV – ERA Clearing Accounts by Payer and Billing Office
+
+
+Payer/Billing OfficeCommentsAccount ID in PRODGuar nameMedicareUnidentified invoices post into an associated remittance WQ.  
+
+CP moves these to payments into the clearing account including the payments in the outside vendors’ WQsMedi-CalAetna Blue CrossBlue Shield UCLA Managed Care AARP United HealthcareUnited HealthcareBOA ERA Mixed PayersBOA EDCMcKessonALN GGBABCOBTPackageCP will manually move package payments to this WQ if it cannot associated the payment with a patient.
+Attachment V - UC Group and Reason Codes
+
+Note the Amount associated with all UC Group and Reason Codes is always zero.
+
+UC Reason CodeDescriptionWQCommentsU001Payment Posted to First Charge on InvoiceCP Lump Sum Follow-Up WQNo transfer
+
+Cash Posting will post the appropriate group and reason codes when it distributes payment across charges.U002Insurance Paid/Balance at GuarantorInsurance Payment on Charge with Balance at Guarantor Credit WQ.No transferU003No Contractual Adjustment on PaymentStandard follow-up WQsFollow-Up needs to enter the appropriate group and reason codes when it posts the contractual allowance.U004Worker’s Comp Lump Sum PaymentWorker’s Comp Credit WQ
+Worker’s Comp Follow-Up WQFollow-Up needs to enter the appropriate group and reason codes when it distributes the payment and contractual allowance.U005Invoice Lump Sum PaymentInsurance Lump Sum Credit WQ
+Insurance Lump Sum Follow-Up WQNo transfer
+
+Cash Posting will post the appropriate group and reason codes when it distributes payment across charges.U006Additional Payment on ChargeApply Offsetting Debit AdjustmentU007Medi-Cal SOCNone, informational only.  U008OpenU009Late Charge AdjustmentLate Charge Adjustment Follow-Up WQCharges qualify if the payment has a U009 reason code and the charge balance > $0.U010RAC Audit WarningNone, in report to PBOURC1Recoup with no payment.  Original payment on charge.None, used by ContractingURC2Recoup with no payment.  No previous payment on the charge.None, used by ContractingUAD1Recoup and payment in check.  Additional payment to UCLA and PR is not affectedNone, used by ContractingUAD2Recoup and payment in check.  Additional payment to UCLA and original PR was > the new PR None, used by ContractingUAD3Recoup and payment in check.  Additional payment to UCLA and original PR was < the new PR
+None, used by ContractingUAC1Recoup and payment in check.  Less payment to UCLA and PR is not affectedNone, used by ContractingUAC2Recoup and payment in check.  Less payment to UCLA and original PR was > the new PRNone, used by ContractingUAC3Recoup and payment in check.  Less payment to UCLA and original PR was < the new PRNone, used by Contracting
+
+Optimization
+ Medi-Cal Share of Cost
+
+(On hold, pending example of Medi-Cal SOC Payment/Denial) If the Medi-Cal transaction is a denial or it has a payment and contractual adjustment that does not pay the charge in full and the transaction indicates the patient has a share of cost, EPP sets up the transaction for the SOC portion of the charge to transfer to the NRP.  EPP can identify Medi-Cal transactions with a SOC by the following remark codes.  
+
+127 	Payment is reduced because of patient liability (Share of Cost).  (ERA translates 408 to 	127)
+433       Payment was reduced because of patient liability (Share of Cost).
+171       Aid code 80 recipients are restricted to Medicare coinsurance and deductible payments.
+
+When EPP determines that the transaction has a SOC, it includes a PR for the SOC amount.  It includes a UC U007 Medi-Cal SOC Group and Reason Code.
+
+
+Bundled Payments on Charges with Modifier 50
+
+(On hold pending examples) Some payers make two payments on a charge with a modifier 50 (i.e., bilateral charge).  EPP needs to roll these payments together.  Specs TBS.
+	 	
+
+[Type text]
+
+
+Friday, June 02, 2023			10
+
+
