@@ -1,0 +1,1657 @@
+
+______________________
+
+Content Disclaimer
+The following is a work-in-progress document and not a draft. Technical specifications, sequence, procedural content and context may change upon future reviews and continuing development.
+______________________
+
+
+
+UCLA Faculty Practice Group
+Professional Billing Electronic Remittance  Pre-Processor
+
+
+
+
+
+
+
+
+
+
+Part 1 - What is EPP?
+
+The UCLA Faculty Practice Group receives approximately $800 million of insurer payments each year. More than 95% of these payments are received as part of an Electronic Remittance Advice (ERA) file. These ERA files are formatted to the American National Standards Institute (ANSI) 835 Health Care Claim Payment/Advice Standard. The ERA 835 file is used by healthcare insurance plans to make payments to healthcare providers, provide Explanations of Benefits (EOBs), or both. 
+
+When a healthcare service provider submits an 837 Health Care Claim, the insurance plan uses the ERA 835 to detail the payment to that claim, including:
+* What charges were paid, reduced or denied
+* Whether there was a deductible, co-insurance, co-pay, etc.
+* Any bundling or splitting of claims or line items
+* How the payment was made - such as through a clearinghouse
+
+The 835 Health Care Claim Payment/Advice Standard is designed to be an industry wide tool. As a standard for an entire industry the ERA 835 is intended to meet the needs of everyone for everything. To enable this kind of use across an entire industry the ERA 835 Standard is not a rigid set of rules meant to impose complete uniformity. Instead it is a flexible infrastructure which allows for various styles and forms of implementation. As a result, each of the insurance payors that transmit ERA 835 files to UCLA-FPG have been able to implement their own “dialect” of the 835 standard. FPG’s CareConnect software also “speaks” its own “dialect” of the 835 standard, which is not the same “dialect” any of the payors speak.
+During a work week, UCLA-FPG receives approximately twenty ERA 835 files each day. On an average day, these twenty files will contain between forty and fifty thousand payment and denial transactions. These large volumes of data, multiple 835 dialects and the existence of more than a few potential points of failure result in a significant numbers of transactions which are inaccurate or simply invalid. These issues may only represent a small percentage of overall transactions, but even a small percentage can still mean there are thousands of items each day requiring a manual resolution.
+UCLA-FPG receives ERA 835 files from multiple sources which use different processes, occasionally this can result in an unintentional overlap which causes the same transaction to be received in more than one ERA 835 file.  It is important that all transactions be posted to CareConnect only once, so duplicates need to be recognized and not allowed to post a second time.  This is especially important for payment transactions.  The CareConnect software does include functionality to screen for duplicate transactions. But, in order for this functionality to work, a duplicate transaction must be an exact match of the original transaction. Because the transactions were created by different processes, the second time a payment is received it may not look the same as the first time.  Not allowing duplicate transactions to be posted a second time is a critical requirement..
+The CareConnect software recognizes any variation from its own 835 “dialect” or any inconsistency within the data as an exception. Each of these exceptions requires a manual intervention before it can be posted to CareConnect. The manual intervention may be as simple as one “click”. Or, it may be the significant set of calculations and associated data entry required to separate a claim level payment into multiple charge payments  
+Manually correcting thousands of exceptions everyday results in significant labor costs and delays in recording the information contained in the ERA 835 files. Due to this high volume of rejections, staff is unable to address all rejections immediately, which results in a high number of transactions begin put into clearing accounts for future research.  This results in delayed application of payments to accounts and the allocation of these payments to the FPG departments.  In addition, it is not uncommon that manually correcting exceptions can also create additional and sometimes more complex issues. These newly created exceptions will then require another manual intervention.
+As a solution to the issues described above, the Professional Billing Electronic Remittance Pre-Processor (EPP) application was created. The ERA Pre-Processor is often referred to by its acronym EPP. EPP has the capability to translate each different insurer’s ERA 835 "dialect" into the CareConnect "dialect". EPP has the ability to identify and remove check and denial transactions received a second time from an ERA file. EPP is also capable of resolving a significant number of the common data inconsistencies. The combination of these three capabilities greatly reduces the number of exceptions which would have otherwise required manual intervention. With a smaller number of transactions requiring manual correction, fewer additional secondary exceptions are created, further reducing the manual effort required to get all transactions posted. 
+
+
+
+
+
+
+
+
+Section 1 - Understanding the Health Care Claim Payment and Electronic Remittance Advice (ERA 835)
+
+Understanding the structure and content of an ERA 835 file is essential to understanding EPP. This is especially critical, as the ERA 835 file is both input to and output from the EPP process. A basic understanding of the ERA 835 file should be considered a prerequisite to understanding the purpose and function of EPP.
+
+EDI File Basics
+The ERA 835 file (Health Care Claim Payment/Advice) is an Electronic Data Interchange (EDI) file. EDI is the electronic interchange of business information using a standardized format. This process allows one company to send information to another company electronically, rather than using a hard copy. 
+The ERA 835 files UCLA-FPG receives are in ASC (American Standards Committee) X12 format.   An ASC X12 file is a text file separated by segment, element and sub-element separators, referred to as delimiters. ASC X12 files can be opened using any text editor; for example, the Windows notepad utility. Carriage return and line feed are neither required nor prohibited characters by the ASC X12 standard. All of the ERA 835 files UCLA-FPG receives do include a carriage return and line feed following each segment separator. Because of this, each segment will appear as a separate line when the file is viewed in a text editor.
+The image below is an example of an ERA 835 file. Each segment starts with a 2-3 letter code that identifies the segment type (Example: ISA, GS, ST, BPR are all segment identifiers). Each segment ends with a tilde (~). This is the segment separator or segment delimiter. Each segment contains multiple elements, each separated by the element separator. All ERA 835 files that UCLA-FPG receives use an asterisk (*) as the element separator – as shown in the example below.
+
+
+Figure 1.1
+
+
+
+EDI File Envelopes
+
+Some segments form the EDI X 12 envelopes. They are common to all EDI X12 files and message types. Those segments are ISA, GS, ST, SE, GE, and IEA. This set contains important information about trading partners (like Sender Id, Receiver Id, etc.). It also contains interchange, transaction group and transaction control numbers, counts, transmission dates and times, and more. Enveloping segments work in pairs. ISA-IEA represents an interchange. GS-GE is a group inside of the interchange and ST-SE is a transaction set inside the group. These are the three layers of enveloping. Each layer may repeat multiple times. However, all ERA 835 files currently received by UCLA contain only one ISA-IEA pair. 
+
+
+Figure 1.2
+
+EDI Document
+The EDI document represents the payload of the EDI envelopes. The EDI document is contained in the segments that reside within the ST envelope.  The document is a set of data that has a single format, (EDI standard), a single sender and single receiver.  In an ERA 835 file, the EDI document is an Explanation Of Benefits (EOB).  An EOB is a statement sent by a healthcare insurance company to healthcare providers.  For previously submitted invoices or claims, the EOB explains what medical treatments and/or services are currently being adjudicated. 
+EDI Line Item Data
+Line items and their structure are repeated multiple times in its document.  A line item holds the data that is the focus of the document.   For instance, a claim has two line items (services rendered) which could be split into two claims that can then each be paid separately. In an EOB document these pieces of data will be found in the line item:
+1. CPT Code of Provided Service
+2. CPT Modifiers
+3. Date Service Was Provided
+4. Quantity
+5. Price or Fee
+6. Payment Amount
+
+EDI File Loops
+If you look at the typical EDI X12 file, it is difficult to see that there are loops (blocks of repeating data) in it. So it is not obvious where one block ends and another begins. The EDI X12 standard documentation is used to ensure and identify how the loops are defined. Most loops are simply blocks of repeating segments. For example: Claim Lines/Service Payment Info in ERA 835 transaction. 
+
+
+ISA*00*          *00*          *01*042064683      *30*581958888*150129*0030*^*00501*000002843*0*P*:~
+GS*HP*042064683*1881670248*20150129*003011*2843*X*005010X221A1~
+ST*835*0001~
+BPR*H*0*C*NON************20150126~
+TRN*1*FC9025027000720*1066033492~ 
+REF*EV*581958888~
+DTM*405*20150127~
+N1*PR*AETNA*XV*CMAE1~
+N3*151 FARMINGTON AVENUE~
+N4*HARTFORD*CT*06156~
+PER*BL*Provider Service~
+N1*PE*UCLA RADIOLOGY MEDICAL GROUP*XX*1881670248~
+N3*FILE  55619~
+N4*LOS ANGELES*CA*900740001~
+REF*PQ*683418510~
+          LX*1~
+          TS3*1467401240*22*20151231*1*35.00*****************11.88~
+         CLP*P1057318590*1*35*0*11.88*13*150120E211810000*22*1~
+         NM1*QC*1*WONG*SUSAN****MI*MEBJ3V7Y~
+         NM1*82*2*UCLA RADIOLOGY MEDICAL GROUP*****XX*1467401240~
+         REF*CE*PPO SELECT PLUS PLAN~
+         DTM*232*20150114~
+         DTM*233*20150114~
+         DTM*050*20150120~
+         PER*CX**TE*8006240756~
+         AMT*AU*35~
+         SVC*HC:71020:26*35*0**1~
+         DTM*472*20150114~
+         CAS*CO*45*23.12~
+         CAS*PR*1*11.88~
+         REF*6R*104080221~
+         AMT*B6*11.88~
+ LX*2~
+      TS3*1013953835*22*20151231*2******************4900.26~
+           CLP*P1041711910*22*-29112*0**HM*140806E297850000*22*1~
+           NM1*QC*1*CISNEROS*CARLOS*L***MI*BBP7VN3B~
+           NM1*74*1*HERNANDEZ*RAFAELA~
+           NM1*82*2*UCLA RADIOLOGY MEDICAL GROUP*****XX*1013953835~
+           REF*1L*374319-028~
+           DTM*232*20140114~
+           DTM*233*20140114~
+           DTM*050*20140806~
+           PER*CX**TE*8006240756~
+         SVC*HC:75774:26:59*-80*0**0**1~
+
+
+DTM*472*20140114~
+CAS*PI*B11*-80*1~
+REF*6R*76892157~
+         SVC*HC:75774:26:59*-80*0**0**1~
+DTM*472*20140114~
+CAS*PI*B11*-80*1~
+REF*6R*76892156~
+         SVC*HC:75726:26:59*-175*0**0**1~
+DTM*472*20140114~
+CAS*PI*B11*-175*1~
+REF*6R*76892155~
+         SVC*HC:37242*-20457*0**0**1~
+DTM*472*20140114~
+CAS*PI*B11*-20457*1~
+REF*6R*76892151~
+SE*110*0002~
+ST*835*0001~
+    BPR*H*0*C*NON************20150126~
+    TRN*1*FC9025027000720*1066033492~
+    REF*EV*581958888~
+    DTM*405*20150127~
+    N1*PR*AETNA*XV*CMAE1~
+    N3*151 FARMINGTON AVENUE~
+    N4*HARTFORD*CT*06156~
+    PER*BL*Provider Service~
+    N1*PE*UCLA RADIOLOGY MEDICAL GROUP*XX*1881670248~
+    N3*FILE  55619~
+    N4*LOS ANGELES*CA*900740001~
+    REF*TJ*954368744~
+          LX*1~
+     TS3*1467401240*22*20151231*1*35.00*****************11.88~
+CLP*P1041711910*1*29112*4900.26**HM*150115C297850000*22*1~
+NM1*QC*1*CISNEROS*CARLOS*L***MI*BBP7VN3B~
+NM1*74*1*HERNANDEZ*RAFAELA~
+NM1*82*2*UCLA RADIOLOGY MEDICAL GROUP*****XX*1013953835~
+REF*G1*0557837~
+REF*CE*FLEX MEDICAL PLAN NET 00224~
+DTM*232*20140114~
+DTM*233*20140114~
+DTM*050*20150115~
+PER*CX**TE*8006240756~
+AMT*AU*29112~
+     SVC*HC:75774:26:59*80*48.15**1~
+DTM*472*20140114~
+     CAS*CO*45*31.85~
+     REF*6R*76892157~
+     AMT*B6*48.15~
+     LQ*HE*N59~
+     SVC*HC:75774:26:59*80*48.15**1~
+DTM*472*20140114~
+     CAS*CO*45*31.85~
+     REF*6R*76892156~
+     AMT*B6*48.15~
+     LQ*HE*N59~
+SE*110*0002~
+         GE*3*2843~
+          IEA*1*000002843~
+
+Figure 1.3
+
+Segment Qualifiers
+
+Some segments repeat more than once. In most cases these types of segments have different qualifiers inside the segment which clarify the purpose and use of the segment.  For example: there are a number of DTM segments in the above sample file ERA 835 file shown in Figure 1.1. Some of the DTM segments are located at the same level (same loop), but each one has its own qualifier as the first element after the segment identifier. A DTM*232 contains the first date of service for all lines of the claim. A DTM*233 contains the last date of service for all lines of the claim. Both of these segments are in the 2100 Claim Payment Loop. A DTM*472 is in the L2110 Service Payment Loop and contains the date of service for the charge represented on the SVC segment, which it immediately follows.
+
+AMT	B6
+	AU
+BPR	H
+	I
+CAS	CO
+	OA
+	PI
+	PR
+DTM	50
+	150
+	151
+	232
+	233
+	474
+LQ	HE
+N1	PE
+	PR
+NM1	74
+	82
+	QC
+PER	BL
+	CX
+PLB 	FB
+	IR
+	PI
+	L6
+	WO
+QTY	CA
+REF	1L
+	6R
+	CE
+	EV
+	G1
+	PQ
+	TJ
+
+More detailed information on the ERA 835 file is available in Appendix E – ERA 835 Segment Layout
+
+
+
+
+
+
+
+
+Section 2 - The EPP Process
+A High Level Overview
+
+EPP in a nut shell.  ERA 835 files arrive in the EPP in-box.  EPP processes each ERA 835 file once.  A corrected, revised and improved ERA 835 file is placed in the EPP out-box. When the data in the revised ERA 835 file is merged into CareConnect; there are very few exceptions which require corrections and the posting actions identified by the revised group reason codes have been optimized. Everyone is happy.        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+EPP High-level Process Flow
+
+STEP001 – EPP_LOAD_IFCT_TABLE
+STEP002 – Select next file to process
+		If there were no files to be processed, go to STEP015
+		If there is an unprocessed file to be processed, go to STEP003
+		If all “NEW” files have been processed, go to STEP013
+STEP003 – EPP_CHK_ARCHIVE_4_OUTPUT_FILE
+		If a copy of this ERA file is in ARCHIVE, go to STEP002
+STEP004 – Change file status from “NEW” to “INP” (In Progress)
+STEP005 – EPP_READ_AND_SPLIT_ERA_FILE
+STEP006 - EPP_LOAD_ ALL_EPP_TABLES
+STEP007 - EPP_CHECK_FOR_DUPLICATES
+STEP008 - EPP_PRE_MATCH_PROCESSING
+STEP009 - EPP_MATCH_ERA_TXNS_TO_CHARGES
+STEP010 - EPP_POST_MATCH_PROCESSING
+STEP011 - EPP_CREATE_OUTPUT_ERA_FILE
+STEP012 – Change file status to “OLD” (Processed)
+		Return to STEP002
+STEP013 - EPP_SUBMIT_EPP_REPORTS
+STEP014 – Create all files processed message
+		Go to End of Process
+STEP015 – Create no files to process message
+      
+      End of Process
+
+Figure 2.1
+
+ERA 835 Files Arrive in the EPP In-Box
+This is the input folder and location where all files to be processed by EPP are placed: \\IOPCCWG1\CCProdDropbox$\fpg_era\prd\from_cc\
+
+Typical file names of input files:
+	
+Figure 2.2
+
+STEP001EPP_LOAD_IFCT_TABLE
+The EPP in-box is scanned for new files.  Data for any new files is loaded into the EPP_IFCT table.  New files are assigned a status of "NEW"
+
+
+STEP002Select Next File to Process
+The oldest file with a status of NEW(Unprocessed File) or RDO(Reprocess) is selected for processing  
+
+
+
+STEP003EPP_CHK_ARCHIVE_4_OUTPUT_FILE
+The EPP Out-Box archive folder is checked for the currently selected file, if this file is present , the file is placed in error status.  The process returns to STEP002 to select a different file for processing.
+
+STEP004  Change file status from 'NEW' to 'INP' (In Process)
+The status of ERA 835 files selected for  EPP processing is changed from NEW(Unprocessed File) to INP(In Process) in the EPP_IFCT table.
+
+STEP005EPP_READ_AND_SPLIT_ERA_FILE
+The ERA file is read and divided into the different segments and data elements which it contains.
+
+See Section 3 of this document - Reading the ERA 835 file and splitting into the different components
+
+STEP006EPP_LOAD_ALL_EPP_TABLES
+Translate the positional relationships within the ERA 835 file into a set of relational keys as each segment type is copied into a separate database table. 
+
+See Section 4 of this document - Loading ERA 835 Data into the EPP 835 Segments Database
+
+STEP007EPP_CHECK_FOR_DUPLICATES
+Recognize and eliminate any checks which have been previously processed.  This can be more challenging than it sounds as the same check may be received more than once but looking different each time.  
+
+See Section 5 of this document - Duplicate Check Identification
+
+
+
+
+
+
+
+STEP008  EPP_PRE_MATCH_PROCESSING
+A significant amount of EPP’s functionality requires that each transaction in an ERA 835 file be matched to the appropriate “charge” in CareConnect. Before that can happen, it is necessary to translate each of the insurance payor’s 835 dialects to the CareConnect 835 dialect. 
+
+See Section 6 of this document - Pre-Matching File Revisions
+
+
+STEP009EPP_MATCH_ERA_TXNS_TO_CHARGES
+Theoretically, each transaction in an ERA 835 file would “match” to a specific charge transaction in CareConnect. A matching condition would be indicated by the two transactions sharing the same invoice number, date of service, CPT code and amount. In the real world, there seems to be an infinite number of reasons why this does not always work.
+See Section 7of this document  - Matching ERA 835 Transactions to Charges in CareConnect
+
+STEP010  EPP_POST_MATCH_PROCESSINGOnce the ERA transactions have been matched to charges in CareConnect, file revisions which require information about the current status of the charge can be made.
+See Section 8 of this document  - Post Matching File Revisions
+
+The actions indicated by the group and reason codes the payors have include in their ERA 835 files are not always consistent with the actions UCLA FPG would prefer.  Group and reason codes are modified to values which will create optimal results.  
+See Section 9 of this document - Modify Group Reason Codes to Achieve Different Actions in CareConnect
+
+
+STEP011  EPP_CREATE_OUTPUT_ERA_FILE
+The revised and modified data in the EPP 835 Database tables must now be recomposed into an ERA 835 file. This requires recognizing what segments are still active; resetting the transaction set record counts and restoring the file to its original sequencing. Sequencing is critical as position in the file designates the relationships of the segments to each other.  
+
+See Section 11 of this document - Creating the Output ERA 835 File
+
+STEP012  Change file status to 'OLD' (Processed)
+The status of ERA 835 files which competed EPP processing without an error is changed from INP(In Process) to OLD(Processing Completed) in the EPP_IFCT table.
+
+
+STEP013  EPP_SUBMIT_EPP_REPORTSExecute ReportCaster schedule to create and distribute EPP Production Status Report.
+
+
+STEP014 Create all files processed message
+An email is distributed with the following message:
+"EPP Production Process Completed Successfully"
+"New files were processed"
+
+STEP015  Create no files to process message
+An email is distributed with the following message:
+"EPP Production Process Completed Successfully"
+"No new files processed"
+
+Revised ERA 835 are put into EPP Out-Box
+This is the output folder and location where all files to be processed by EPP are placed: \\IOPCCWG1\CCProdDropbox$\fpg_era\prd\to_cc\
+
+Typical file names of output files:
+
+Figure 2.3
+
+
+
+
+
+
+
+
+Section 3 - Reading the ERA 835 File and Splitting into the Different Components
+
+Many companies that undertake an EDI implementation, purchase a software package called an EDI translator. This is a specialized tool specifically created to recognize and manage all of the complex technical issues involved with reading an EDI file. UCLA-FPG has instead created its own ERA 835 translator using WebFOCUS.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+EDI File Complexity 
+Interpreting any EDI file with a computer program can present a significant set of technical challenges. Using the ERA 835 EDI file as an example:
+a) There are approximately 35 different types of segments (records) which may be present in each file.
+b) Many of the segments are optional and can be present in the file or may not be present.
+c) Each of the segments have their own different sets of fields, which have different and varying sizes – any two segments of the same type are likely to have different lengths.
+d) The 35 different segment types may contain approximately 1000 different data elements.
+e) Even when a segment exists, many of the fields in a segment may or may not be present. 
+f) As neither segments nor fields have fixed sizes, the start and end of each field and segment is indicated by a delimiter
+g) Each segment has a 2-3 character identifier – even when two segments have the same identifier, they can still be used for different purposes.
+h) Some segments repeat more than once. In most cases these types of segments have different segment qualifiers inside the segment which clarify the purpose and use of the segment.
+i) In addition to the segment type and any segment qualifiers, the position of the segment in the file can further differentiate the purpose, use and relationship of the segment to other segments in the file.
+
+Because of this complex structure and significant variability, the ERA 835 (or any EDI file) cannot be read and accurately interpreted in the same way as standard and common file types. The diagram below shows each of the ERA 835 segment types and their relationship to one another.
+
+Diagram of ERA 835 Segments – Showing Relationships to Each Other
+
+                                                                                                    Figure 3.1
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+
+FEX: EPP_READ_AND_SPLIT_ERA_FILE
+Purpose: Determine Segment type and split record based on field delimiter.  
+Description: Reads each row as just one field and then splits the record into separate fields based on the field delimiter.  At the same time identifies the appropriate segment type of each record.  
+
+Reading the EDI File
+Initially, each row is read as just one field. The row is read using the group level name – DATAREC in the master file below.
+
+Figure 3.2
+
+The ERA 835 file uses an asterisk as the delimiter between fields (elements) and a tilde as the delimiter between records (segments). The ASC X12 EDI standard does not require all of the defined fields in the segment definition to always be present in a transmitted segment. There will not be a field delimiter after the last field present in a segment. This is true even when the segment definition includes additional following fields. This means the segment delimiter (tilde) will appear after the last field that is present on a transmitted segment. In addition to the segment delimiter, there is also a carriage return and a line feed character at the end of each segment.  
+In order to have a consistent delimiter after each data element in the segment, all of the asterisks in each segment are changed to tildes. Once this is done, the tilde becomes a consistent field delimiter for every field, including the last field. The line feed and carriage return present at the end of each segment are then considered to be the segment delimiters.   
+This is the code all asterisks in the record to a tilde: 
+
+Figure 3.3
+
+
+Differentiating Segment Types
+For every record in the file, the code identifies which of the 35 different segment types that the record belongs to. This is based on a combination of the 3-digit segment type identifier at the beginning of each record and the record’s position in the file.
+
+Some segment types are used in the file more than once and for different purposes. For example, there can be DTM segments positioned in several different places in the ERA/835 file. The relationship of the data in these segments to other segments in the file can is dependent is dependent on this position.  Start at a DTM segment, move towards the beginning of the file. If an SVC segment is located before a CLP or an ST then the DTM segment is an SVC-DTM segment.  Starting at a DTM segment, move towards the beginning of the file. If a CLP segment is located before an SVC or ST then the DTM segment is a CPL-DTM segment. Starting at a DTM segment, move towards the beginning of the file.  If an ST segment is located before an SVC or CLP then the DTM segment is an ST-DTM segment.
+
+This same type of logic applies to the following segment types: 
+
+Figure 3.4
+
+The code creates several temporary data fields which are used to determine each segment type’s position in the file and then use the position to establish a segments relationship to other segments.
+
+Splitting Segments into Fields
+Depending on the segment type there may be as few as two or as many as 25 fields in the segment.  The code splits the record into separate fields using the field delimiter and attempts to load data into each of the 25 fields.  Of the 25 possible fields, only those fields for which data actually exists will be loaded.  Fields for which data does not exist will have a “null” value.     
+
+
+Figure 3.5
+
+The size of each field created will be equal to the largest field in that position on any of the segments. For example; the 5th field on a PER segment may be as large as 256 characters, while the 5th field on all other segment types is smaller. The 5th field for all segments is created with a field size of 256 characters.
+
+
+
+
+
+
+Section 4 - Loading ERA 835 Data into the EPP 835 Segments Database
+Translate the positional relationships within the ERA 835 file into a set of relational keys as each segment type is copied into a separate database table. 
+
+
+Overview
+
+Additional content to be added here at a later date.
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 4.1
+
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+
+What the Data From the ERA 835 File Looks Like Now
+The output from EPP_READ_AND_SPLIT_ERA_FILE is one fixed length, fixed format file. The segment separators are gone and each record is followed by the standard carriage return/line feed. The delimiters between data elements have been removed and each element has been transformed into a fixed length field. This type of file is commonly referred to as a flat file.
+The first field of each record in this flat file is still the segment identifier.  However, the segment identifier has become a four character field which now contains a two to four letter code.  Some segment identifiers have been changed in order to differentiate segment types which have more than one usage.  These are generally the segment types which include a segment qualifier.  In addition to the segment qualifier, the usage of these segments is further differentiated by their position in the ERA 835 file. 
+Example: All date and time segments originally had a three letter code of DTM.  DTM segments with a position in the ERA 835 file that indicates a CLP parent segment will contain dates which apply to a claim. The segment identifier for these segments has been changed to CDTM. DTM segments with a position in the ERA 835 file that indicates an SVC parent segment will contain dates which apply to a service. The segment identifier for these segments has been changed to SDTM.
+
+
+Put Chart Showing Additional Examples Here
+
+As previously discussed, all of the segment types are now fixed length records in just one file and the fields in this file are also fixed length.  The first field of every record, the segment identifier, has a length of four characters. The second field of every record also has the same field length, a length of fifty-five characters.  In order to change the ERA 835 file to a fixed length file all of the fields belonging to each segment type must be the same size as all of the fields in the same position on every other segment type. 
+Because the second field of an N3/address segment is fifty-five characters, all of the second fields in all of the segment types are set to this maximum size.  The second field of each CLP segment is the invoice number, which has a maximum length of thirty-eight characters. (When referenced in a WebFOCUS program this field is referred to as CLP_CLM_SUBMTR_ID.) This field is placed into the fifty-five character second field, left justified and space filled. 
+This same logic applies to the third field, the fourth field and so on up to the maximum number of fields on a segment which is twenty-four.  This can be seen in Figures 4.2 and 4.3 on the next page. The values in the ACTUAL column are the same for both segments, except the CLP segment has fifteen data elements and the NM1 segment has only thirteen.  The values in the ACTUAL column represent the maximum length for the nth data element in every segment. A review of the USAGE column in Figures 4.2 and 4.3 will show that these values are different for each segment. The USAGE column contains the maximum field length of the nth field in that specific segment.  When the ERA 835 file is read using these descriptions, the fields for each segment are automatically reduced from the size in the actual column to the size in the usage column.               
+
+
+WebFOCUS File Description for CLP Segment
+$ CLP - Claim Payment Info
+SEGNAME=CLP,      	                  	PARENT=LX,      	SEGTYPE=S0,                                                         	$
+FIELD=RECTYPE,		    	ALIAS=CLP_RT,	USAGE=A04,	ACTUAL=A004,	ACCEPT=CLP,	$  FIELD=CLP_CLM_SUBMTR_ID,        	ALIAS=,              	USAGE=A38,     	ACTUAL=A055,			$    FIELD=CLP_CLM_STATUS_CD,        	ALIAS=,               	USAGE=A02,     	ACTUAL=A080, 			$    FIELD=CLP_TOT_CLM_CRG_AMT,	ALIAS=,               	USAGE=A18,     	ACTUAL=A080, 			$    FIELD=CLP_CLM_PYMT_AMT,         	ALIAS=,               USAGE=A18,	ACTUAL=A256, 			$    FIELD=CLP_PT_RESP_AMT,	    	ALIAS=,		USAGE=A18,     	ACTUAL=A080,			$    
+FIELD=CLP_CLM_FIL_ID_CD,                	ALIAS=,               USAGE=A02,      	ACTUAL=A256,  			$    FIELD=CLP_PYR_CLM_CNTL_NO,	ALIAS=,          	USAGE=A30,   	ACTUAL=A080,			$    FIELD=CLP_FCLTY_CD_VALU,       	ALIAS=,           	USAGE=A02,   	ACTUAL=A256,                       	$    FIELD=CLP_CLM_FREQ_TYP_CD, 	ALIAS=,           	USAGE=A01,    	ACTUAL=A080,  			$    FIELD=CLP_PT_STS_CD,            		ALIAS=,           	USAGE=A02,    	ACTUAL=A048,  			$    FIELD=CLP_DRG_CD,               		ALIAS=,           	USAGE=A04,    	ACTUAL=A033,			$
+FIELD=CLP_QTY,        			ALIAS=,     	USAGE=A15,    	ACTUAL=A060,			$    FIELD=CLP_PCT,                  		ALIAS=,            	USAGE=A10,    	ACTUAL=A033,			$ FIELD=CLP_YN_COND_RESP_CD,     	ALIAS=,            	USAGE=A01,   	ACTUAL=A018,			$ 
+Figure 4.2
+
+WebFOCUS File Description for NM1 Segment
+$ NM1 - Patient Name
+SEGNAME=NM1,                        		PARENT=CLP,	SEGTYPE=S0,              				$
+FIELD=RECTYPE,                  		ALIAS=,      	USAGE=A04,     	ACTUAL=A004, 	ACCEPT=NM1,	$    FIELD=NM1_ENTITY_ID_CD,         	ALIAS=,            	USAGE=A03,     	ACTUAL=A055,   		$    FIELD=NM1_ENTITY_TYP_QLFR,      	ALIAS=,            	USAGE=A01,     	ACTUAL=A080,   		$    FIELD=NM1_PT_LST_NM,            		ALIAS=,            	USAGE=A60,     	ACTUAL=A080,    		$    FIELD=NM1_PT_FST_NM,            		ALIAS=,            	USAGE=A60,     	ACTUAL=A256, 			$     FIELD=NM1_PT_MID_NM,            		ALIAS=,            	USAGE=A60,     	ACTUAL=A080, 			$    FIELD=NM1_PT_NM_PRFX,           	ALIAS=,            	USAGE=A10,     	ACTUAL=A256,			$    FIELD=NM1_PT_NM_SFX,            		ALIAS=,            	USAGE=A10,     	ACTUAL=A080,			$    FIELD=NM1_INS_ID_CD_QLFR,       	ALIAS=,            	USAGE=A02,     	ACTUAL=A256,			$    FIELD=NM1_INS_ID_CD,            		ALIAS=,            	USAGE=A80,     	ACTUAL=A080, 			$     FIELD=NM1_ENTITY_REL_CD,        	ALIAS=,            	USAGE=A02,     	ACTUAL=A048,			$     FIELD=NM1_ENTITY_ID_CD2,        	ALIAS=,            	USAGE=A03,     	ACTUAL=A033,			$   FIELD=NM1_ORG_NM,               		ALIAS=,            	USAGE=A60,    	ACTUAL=A060,			$ 
+Figure 4.3
+
+Segment Relationships
+There is a line In both Figures 4.2 and 4.3 and which begins with SEGNAME. The second column of this line for the CLP segment contains: PARENT=LX. The second column of this line for the NM1 segment contains: PARENT=CLP.  So, the parent of the CLP segment is the LX segment and in turn the CLP segment is the parent of the NM1 segment.  These relationships can be clearly seen in Figure 4.1.  An examination of Figure 4.1 will show that an ST segment is the parent of the LX segment.  Observing the NM1 segment it is easy to see that the NM1-PER segment is a child of thee NM1.     
+
+
+A close examination of 4.1 will show that there are 3 different types of ???-PER segments.  These three are the NA-PER, CLP-PER and NM1-PER.  In the ERA 835 file the parent of a CLP-PER will be the CLP segment which most closely precedes the PER segment.  The only information that identifies a specific PER segment is the child of a specific CLP segment is their relative position in the ERA 835 file.
+
+
+Figure 4.4
+
+Tables Loaded from Masters
+edi835_by_rt.masedi835_by_rt_lx.masepp_ld_bpr_tbl.fexepp_ld_clp_amt_tbl.fexepp_ld_ge_tbl.fexepp_ld_clp_cas_tbl.fexepp_ld_gs_tbl.fexepp_ld_clp_dtm_tbl.fexepp_ld_iea_tbl.fexepp_ld_clp_per_tbl.fexepp_ld_isa_tbl.fexepp_ld_clp_qty_tbl.fexepp_ld_na_per_tbl.fexepp_ld_clp_ref_tbl.fexepp_ld_na_ref_tbl.fexepp_ld_clp_tbl.fexepp_ld_na_tbl.fexepp_ld_lq_tbl.fexepp_ld_plb_tbl.fexepp_ld_lx_tbl.fexepp_ld_se_tbl.fexepp_ld_mia_tbl.fexepp_ld_st_dtm_tbl.fexepp_ld_moa_tbl.fexepp_ld_st_ref_tbl.fexepp_ld_nm1_tbl.fexepp_ld_st_tbl.fexepp_ld_svc_amt_tbl.fexepp_ld_trn_tbl.fexepp_ld_svc_cas_tbl.fexepp_ld_svc_dtm_tbl.fexepp_ld_svc_qty_tbl.fexepp_ld_svc_ref_tbl.fexepp_ld_svc_tbl.fexepp_ld_ts3_tbl.fex
+Figure 4.5
+
+
+Creating Relational Keys
+The goal now is to take these segments and load them into a relational database.  Each segment will be placed in its own table. What is needed is a method to translate the relative position information in the ERA 835 file into the relational keys requires to represent the relationships diagramed in Figure 4.1.
+File ID: Each file is assigned a file id. This is just a numeric value which is incremented by one with each new file processed.
+Group (GS) Sequence Number: The first group in each file is assigned a sequence number of one.  With each new group this sequence number is implemented by one. 
+Transaction Set (ST) Sequence Number:  The first transaction set is assigned a sequence number value of one.  For each additional transaction set in the first group, the sequence number is incremented by one. With each new group the transaction set sequence number is reset to one.  
+Header (LX) Sequence Number:  The first header(LX) in each transaction set is assigned a value of one, this value is incremented by one for each additional header within a transaction set. 
+Claim (CLP) Sequence Number:  The first claim(CLP) within each header is assigned a value of one, this value is incremented by one for each claim within the same header.
+Line Item (SVC) Sequence Number:  The first line item(SVC) within each claim is assigned a value of one, this value is incremented by one for each line item within the same claim.
+ Line Item Adjustment Sequence Number: The first line item adjustment(SVC-CAS)  for each line item is assigned a value of one, this value is incremented by one for each additional line item adjustment for the same line item.
+The WebFOCUS description for the relational key fields in the table the CLP segments are loaded to can be seen in Figure 4.4. and relational key fields for SVC segments in Figure 4.5
+
+Relational Keys For the CLP Segment Database Table
+
+FILENAME=EPP_CLP, SUFFIX=SQLORA, 					$
+SEGMENT=EPP_CLP, SEGTYPE=S0, 						$
+FIELDNAME=CLP_ISA_FILE_ID,	   	USAGE=P19,	ACTUAL=P10, 	$    FIELDNAME=CLP_GS_GRP_SEQ_NO, 	USAGE=P6, 	ACTUAL=P3, 	$
+FIELDNAME=CLP_ST_SEQ_NO, 	   	USAGE=P8,	ACTUAL=P4, 	$    
+FIELDNAME=CLP_LX_SEQ_NO, 	   	USAGE=P5,	ACTUAL=P3, 	$    
+FIELDNAME=CLP_CLM_SEQ_NO,	   	USAGE=P7,	ACTUAL=P4, 	$
+Additional fields from the ERA 835 File .......    
+
+Figure 4.6
+
+
+Relational Keys For the SVC Segment Database Table
+
+FILENAME=EPP2_SVC, SUFFIX=SQLORA, 					$
+SEGMENT=EPP2_SVC, SEGTYPE=S0, 					$
+FIELDNAME=SVC_ISA_FILE_ID, 		USAGE=P19, 	ACTUAL=P10, 	$    FIELDNAME=SVC_GS_GRP_SEQ_NO, 	USAGE=P6, 	ACTUAL=P3, 	$    FIELDNAME=SVC_ST_SEQ_NO, 		USAGE=P8,	ACTUAL=P4, 	$    FIELDNAME=SVC_LX_SEQ_NO, ALIAS,	USAGE=P5, 	ACTUAL=P3, 	$    FIELDNAME=SVC_CLP_CLM_SEQ_NO, 	USAGE=P7, 	ACTUAL=P4, 	$
+FIELDNAME=SVC_SEQ_NO,			USAGE=P6, 	ACTUAL=P3, 	$
+Additional fields from the ERA 835 File .......
+
+Figure 4.7
+
+The CLP segment table has 5 relational keys, Figure 4.4.  The SVC segment table has 6 relational keys, Figure 4.5.  The first 5 keys of an SVC segment will contain the same values as the 5 key fields of third SVC segment's CLP parent.  The sixth key field will differentiate SVC segments (line items) within the same CLP segment (claim).
+This same type of architecture applies to all of the ERA 835 segments and all of the tables to which they are loaded.  Figure 4.6 shows what the relational key values would be for a file with one GS, one LX, one ST, one CLP, one SVC and one SVC-CAS.      
+
+EPP Created Relational Keys
+
+A – File ID
+B – (GS_GRP_ SEQ_NO) Record sequencing indicator for group sequence (GS) header
+C – (ST_TXN_SET_CNTL_NO) Record sequencing indicator for transaction set (ST) header
+D – (LX_SEQ_NO) Record sequencing indicator for header number
+E – (CLP_CLM_SEQ_NO / PLB_SEQ_NO/PER) Record sequencing indicator for claims
+F – (SVC_SEQ_NO) Record sequencing indicator for line items
+G – (SVC_CAS_SEQ_NO) Record sequencing indicator for line item claim adjustments
+
+       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ABCDEFGISA    000001       GS     0000010001        ST     00000100010001    BPR    00000100010001    TRN    00000100010001    DTM(ST)00000100010001    N1(PR) 00000100010001PR0001N3(PR)00000100010001PR0001N4(PR)00000100010001PR0001REF(PR)000001 00010001PR0001  PER(PR)000001 00010001PR0001  N1(PE)00000100010001PE0001  N3(PE)00000100010001PE0001N4(PE)00000100010001PE0001REF(PE)000001 00010001PE0001PER(PE)000001 00010001PE0001LX0000010001000101   CLP00000100010001010001  CAS(CLP)000001000100010100010001NM1(QC)000001000100010100010001NM1(IL)000001000100010100010002NM1(74)000001000100010100010003NM1(82)000001000100010100010004NM1(TT)000001000100010100010005NM1(PR)000001000100010100010006REF(CLP)000001000100010100010001DTM(CLP)000001000100010100010001QTY(CLP)000001000100010100010001SVC000001000100010100010001DTM(SVC)0000010001000101000100010001CAS(SVC)0000010001000101000100010001REF(SVC)0000010001000101000100010001AMT(SVC)0000010001000101000100010001QTY(SVC)0000010001000101000100010001LQ0000010001000101000100010001PLB0000010001000101SE00000100010001GE   0000010001IEA000001Figure 4.8
+
+
+
+
+
+
+
+
+Section 5 - Duplicate Check Processing
+
+The goal is to recognize and eliminate any checks which have been previously processed.  This can be more challenging than it sounds as the same check may be received more than once but the second time it may not look exactly the same as the first time.  
+
+
+Duplicate Transactions
+UCLA FPG receives ERA 835 files from multiple sources which may use different processes to create the ERA 835 files.  Occasionally, as there are different processes, the result can be an unintentional overlap and the same transaction will be received in more than one ERA 835 file.  It is important that all transactions be posted to CareConnect only once, so duplicates need to be recognized and not allowed to post a second time.  This is especially important for payment transactions.  
+The CareConnect software does include functionality to screen for duplicate transactions. But, in order for this functionality to work, a duplicate transaction must be an exact match of the original transaction. Because the transactions were created by different processes, the second time a payment is received it may not look the same as the first time.  For this reason, logic to identify duplicate transactions which are not exact matches has been added to EPP.
+
+Check Numbers
+In the ERA 835 file, a transaction set, is all segments from an ST and an SE segment. Within each transaction set there will be one TRN segment.  The TRN segment includes a data element, the reference number. The reference number is assigned by the payor and uniquely identifies the group of transactions in the transaction set.  For transaction sets which include payments, the reference number is the check number.  To simplify readability and understanding, the reference number, will be referred to as the check number for all types of transactions.  
+Since there is only one TRN segment in a transaction set, there can only be one check number for that transaction set. Because of this, logically, all of the transactions in a transaction are all for the same check.  While the ERA 835 standard does not explicitly require it, by convention, all of the transactions for a check will be contained in a single transaction set.  This means that if a check has previously appeared in an ERA 835 file, then no transaction for that check/check number should ever be present in a subsequent ERA 835 file.  Because of this duplicate transactions/payments can be recognized and rejected at the check level.
+However, a check number by itself does not represent a reliable unique key by which duplicate transactions can be identified. Different payors may each use the same check number.  And even if check numbers are generally unique for a payor, no payor identification which is useful for this purpose exists within the ERA 835. So simply comparing check numbers in a file currently being processed against previously received check numbers will not by itself reliably identify duplicate transactions. 
+
+Check Number and Invoice Number Combination
+Because a check number by itself cannot identify a duplicate transaction, a list of all previously processed check number and invoice number combinations is maintained and used as a resource to determine when a transaction has been previously received.  This approach works reliably and consistently as long as the original transaction and any subsequent duplicate transactions have valid and accurate check and invoice numbers.
+Unfortunately, it is not uncommon to receive transactions that contain no invoice number or may have an invoice number of 999999999. When this happens, testing for duplicate transactions using the check and invoice number is no longer effective.  
+
+
+
+Figure 5.1
+The example above represents a common situation, a transaction on a check is received a second time.  Even when the check number looks exactly the same, the original invoice number may not be available.  As seen in the example, the check date can also be unreliable. 
+
+Check Number and Check Amount Combination
+Because both the invoice number and check number are not always available, a second list which is a combination of check number and check amount is also maintained.  The check amount being a critical value, an accurate check amount is consistently available regardless of the source of the file.  This means a check number and check amount combination a useful tool for identifying duplicate transactions.  
+
+Creating a Standardized Check Number
+Typically, duplicate transactions are the result of the same transaction being created by two different processes.  In addition to the same transaction being created twice, each different process may create a different version of the same check number. One of the more common variances in check numbers is the presence or absence of leading zeroes. For check numbers which include preceding alpha characters, some sources may include the alpha characters while others may not. See examples in the chart below.
+
+         Figure 5.2       
+To overcome this issue, the check number fields are standardized in both the check number / invoice number list and in the check number / check amount list. All leading zeroes are removed from the check numbers. If either the first or first two characters of the check number are alpha characters they also are removed.  It is the standardized check number values that are stored in the two lists used to identify duplicate transactions. The check number values in the ERA files are standardized before comparing being compared to the check values in each list, If a standardized check number / invoice number combination from the ERA 835 file matches the same combination from the list of previously processed check numbers / invoice numbers, then all transactions for that check are removed from the file. The same is true for any duplicates identified using the check number / check amount list.
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the Section 6.
+
+
+FEX: EPP_CHECK_FOR_DUPLICATE_TXNS
+Additional content to be added at a later date.
+
+
+
+
+
+
+
+
+Section 6 - Preliminary File Revisions
+
+A significant amount of EPP’s functionality requires that each transaction in an ERA 835 file be matched to the appropriate “charge” in CareConnect. Before that can happen, it is necessary to translate each of the insurance payor’s 835 dialects to the CareConnect 835 dialect. 
+
+
+
+Section 6.1 Add Missing Line Item Date of Segment to ERA 835 File 
+
+
+
+Additional content to be added at a later date.
+
+
+
+
+
+
+
+
+Original and Revised CLP Transaction Set                          
+Figure 6.1
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+FEX: EPP_ADD_SVCDTM_WHEN_MISSING_SD1
+When a claim level date of service (DOS) segment is present and no line item DOS segment exists - add an SVC-DTM segment to the file.
+
+Conditions for Identification of transactions to be revised include:
+* Line items on the claim (CLP) have the same date of service with a CLP-DTM segment with a date time qualifier code of 232.
+* Does not have a CLP-DTM segment with a date time qualifier of 233 with a date of service different than date of service of the CLP-DTM/232.
+* SVC-DTM segment with either 150 (first date of service) or 472 (charge date of service) is missing.
+For transactions meeting the above criteria the following revisions are made:
+* A new record is inserted into the 835 file SVC_DTM/472 from the CLP-DTM/232 segment for each line item (SVC segment) identified in the claim (CLP) transaction set.
+* Line items (SVC segments) matching the above criteria are marked as included.
+
+
+FEX: EPP_ADD_SVCDTM_WHEN_MISSING_SD2
+When a claim level date of service (DOS) segment is present and no line item DOS segment exists - add an SVC-DTM segment to the file.
+
+Conditions for Identification of transactions to be revised include:
+* Line items on the claim (CLP) have the same date of service with a CLP-DTM segment with a date time qualifier code of 232.
+* May include a CLP-DTM segment with a date time qualifier of 233 with a date of service with a different date of service on the CLP-DTM/232 but only one matching charge when the DOS is matched against the date range in the ERA/835 file.
+* SVC-DTM segment with either 150 (first date of service) or 472 (charge date of service) is missing.
+For transactions meeting the above criteria the following revisions are made:
+* A new record is inserted into the 835 file SVC_DTM/472 from the CLP-DTM/232 segment for each line item (SVC segment) identified in the claim (CLP) transaction set.
+* Line items (SVC segments) matching the above criteria are marked as included. 
+* Line items which do not match the above criteria are marked as excluded.
+
+
+FEX: EPP_ADD_SVCDTM_WHEN_MISSING_SD3
+
+Additional content to be here added at a later date.
+
+
+
+
+
+
+FEX: EPP_ADD_SVCDTM_WHEN_MISSING_SD4
+
+Additional content to be here added at a later date.
+
+
+
+FEX: EPP_CPT_RECODE_REVISIONS
+
+
+Revise payor Recodes/ChangedCPT/Txn for Auto-Posting
+
+UCLA FPG requested payment for a service -- the payor replies with an 835 file transaction that indicates they are adjudicating the claim based on a service other than the submitted service.
+
+A standard ERA 835 line item (SVC segment) will contain one CPT code and will look something like this: 
+SVC*HC:99213*343*123.31**1~
+
+A “recode” ERA 835 line item (SVC segment) will contain two CPT codes and looks something like this: 
+SVC*HC:99213*343 *123.31**1*HC:99203~
+Conditions for Identification of transactions to be revised include:
+* There must be a 2nd CPT code on the line item transaction (SVC segment).
+* 
+* The 1st and 2nd CPT codes on the line item transaction (SVC segment) cannot be equal.
+* The claim (CLP) transaction set to which the line item (SVC segment) belongs must also include an SVC-DTM/472 segment. (The SVC DTM/472 may have been added to the transaction set by EPP)
+* The invoice number, date of service and 1st CPT code on the 835 transaction must match exactly to a charge in EPIC. 
+OR
+The invoice number, date of service and 2nd CPT code on the 835 transaction must match exactly to a charge in EPIC.
+For transactions meeting the above criteria the following revisions are made:
+* Line items (SVC segments) matching the above criteria are marked as excluded.
+* A new line item (SVC segment) is inserted into the 835 file. When the match to a charge in EPIC was successful using the 1st CPT code, the 1st CPT code value is retained and the 2nd CPT code value is changed to blank. When the match to a charge in EPIC was successful using the 2nd CPT code, the value of the 2nd CPT code value is moved to the 1st CPT code position and the 2nd CPT code value is changed to blank. All other data elements of the original line item ( SVC segment) are copied to the replacement line item without change.   
+* A line item adjustment (SVC-CAS segment) with a group reason code of PI/URECOD is added to the 835 file.
+
+
+FEX: EPP_FIX_INVC_NO
+
+Replace invalid Invoice Number with a valid invoice
+
+When the invoice number on an 835 transaction does not match to an existing invoice number in Epic – use the patient name on the transaction to identify the correct invoice number.
+
+Conditions for Identification of transactions to be revised include:
+* The invoice number on the ERA 835 transaction does not exist in EPIC. 
+* The patient’s last and first name on the ERA 835 transaction match exactly to a patient’s last and first name in EPIC.
+* Where a patient name match was found, an EPIC charge can be identified for that patient where the DOS, CPT code and original price match the corresponding data on the ERA 835 transaction.
+For transactions meeting the above criteria the following revisions are made:
+* Any claim transactions (CLP segment) that match the above criteria are marked as excluded.
+* A new claim transaction (CLP segment) is inserted into the 835 file. The original/invalid invoice number is replaced by the valid invoice number identified by using the above matching criteria. 
+
+FEX: EPP_REMOVE_OFFSET_SVC_OFF
+Additional content to be here added at a later date.
+
+
+FEX: EPP_CHG_99213_TO_99215_ON_RECOUP
+
+Modify TXN for Recoup CPT Coding-99213
+Currently, UCLA FPG is receiving recoup txns for CPT code 99213 for which there is no matching CPT on the corresponding invoice in EPIC. Some of these txns do have CPT codes of 99214 or 99215 on the matching EPIC invoices. It appears that an earlier ERA 835 payment or denial transaction was received with a recode changing the 99214 or 99215 CPT code to a 99213. So now, the takeback/recoup is being submitted for the recoded CPT 99213, not the original CPT of 99214 or 99215.   
+Conditions for Identification of transactions to be revised include:
+* The claim transaction (CLP segment) must be a recoup transaction as identified by a value of ‘22’ in the claim status field.
+* The ERA 835 transaction contains a line item (SVC segment) with a 1st CPT code of 99213 and no 2nd CPT code.
+* For the line item which contains the 99213 CPT there is a transaction in EPIC with a matching invoice number, DOS, original price and either 99214 or 99215 CPT code.
+For transactions meeting the above criteria the following revisions are made:
+* Line items (SVC segments) matching the above criteria are marked as excluded.
+* A replacement line item (SVC segment) is inserted into the 835 file. The CPT code value of the replacement SVC segment will be either Q4040 or Q4038, dependent on which value was on the matching transaction in EPIC.  
+
+
+FEX: EPP_COUNT_CRGS_ON_EACH_INVOICE
+Count Charges on Each Invoice
+
+Determine the number of charges on each invoice. This info is used later to match charges to invoices. 
+Conditions for Identification of transactions to be revised include:
+* Match invoice number on ERA 835 file to invoice in EPIC. 
+* For each matched invoice count the total number of charges on that invoice. 
+For transactions meeting the above criteria the following revisions are made:
+* Update the Invoice Charge Count field on all matched claim (CLP segment) transactions in the ERA 835 file.
+
+
+
+
+
+
+
+
+Section 7 - Matching ERA 835 Transactions to Charges in CareConnect
+
+Theoretically, each transaction in an ERA 835 file should “match” to a specific charge transaction in CareConnect. A matching condition would be indicated by the ERA 835 transaction and the charge in CareConnect sharing the same invoice number, date of service, CPT code and amount. In the real world, there seems to be a near infinite number of reasons why this does not always work.
+
+Section 7.1 - Matching 835 Claim Level Transactions** to Charges in CareConnect
+
+Some payors ERA 835 files contain transaction which have no line item details, only claim/invoice level information.  These transactions can be for either payment or denials, or both.  The CareConnect software cannot accurately interpret these transactions even in the simplest case, when the claim only includes one line item. Determining which charges in CareConnect are the target of the ERA 835 transaction can be quite complex. This is particularly true when the transaction in the ERA 835 file is for more than one line item, but not for all of the line items that were originally on the invoice.
+
+In order to achieve the maximum number of matches, matching is attempted in six different way:  
+
+* Charges are the sum of the current balance of all charges on an invoice and match the total billed amount on the CLP segment – no special logic required.
+* There are multiple charges on the invoice – adjudication is for only one charge.
+* There are multiple charges on the invoice – included transactions can only be for charges which have previously received a primary payment.
+* Only transactions where a coinsurance or patient responsibility amount was incorrectly written off, leaving charge with a current zero balance.
+* Adjudication of all charges on an invoice except one.
+* Transactions not otherwise matched to a charge - there can be only one charge on the invoice.
+
+Once a match is identified, line item data for the matched charges is inserted into the ERA file.  The claim payment and adjustment amounts are prorated across the individual line items.         
+
+
+
+
+**A Claim Level Transaction is defined as a payment or denial transaction within the 835 file, where transactional information is only provided at the claim or CLP segment level. In the 835 file, Claim Level Transactions will always have a CLP segment, but there will never be an SVC segment associated with that CLP. 
+Note: This does not include the circumstance where an SVC segment does exist and that specific SVC segment represents the adjudication for multiple charges. In this case, when one SVC transaction combines the payment or denial details for multiple charges, it will be referred to as an SVC Level Lump Sum Payment. 
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+
+
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL1
+Charges are the sum of the current balance of all charges on an invoice and match the total billed amount on the CLP segment – no special logic required.
+
+Case 1 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment. 
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on the matched charge(s) must be equal to the first date of service or between the first and last dates of service in the 835 claim level transaction set. The total billed amount of the 835 claim level transaction is equal to the sum of the current balance of one or more charges.
+* The current charge balance of any charges matched to the 835 claim level transaction cannot be zero and must be less than or equal to the total billed amount on that transaction.
+* Charges matched to an 835 transaction in a previous “Case” are excluded from this “Case”.
+
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL2
+There are multiple charges on the invoice – adjudication is for only one charge.
+Case 2 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must relate to a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment.
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on the matched charge must be equal to the first date of service or between the first and last dates of service in the 835 claim level transaction set. The total billed amount of the 835 claim level transaction is equal to the original price or the current balance of one charge, it cannot be the sum of more than one charge and the charge balance cannot be zero. Charges matched to an 835 transaction in a previous “Case” are excluded from this “Case”.
+
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL3There are multiple charges on the invoice – included transactions can only be for charges which have previously received a primary payment.
+ase 3 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment.
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on any matched charges must be equal to the first date of service or between the first date of service and last date of service included in the 835 claim level transaction set. 
+* The total billed amount on the 835 claim level transaction must be the sum of the current balance of one or more charges.
+* The current charge balance of any charges matched to the 835 claim level transaction cannot be zero and must be less than or equal to the total billed amount on the claim level transaction.
+* Charges matched to the 835 claim level transaction may not have a current balance equal to the original price.
+* Charges matched to an 835 transaction in a previous “Case” are excluded from this “Case”.
+
+
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL4
+
+Only transactions where a coinsurance or patient responsibility amount was incorrectly written off, leaving charge with a current zero balance.
+
+Case 4 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment.
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on any matched charges must be equal to the first date of service or between the first date of service and last date of service included in the 835 CLP transaction set. 
+* There must have been a previous transaction; posted and matched to any included charges. This previous transaction had to include at least one non-zero PR1 or PR2 amount. The total billed amount of the current 835 claim level transaction is equal to the sum of the PR1 and PR2 amounts from the previously posted transaction. These amounts were applied incorrectly, the charge balance was not transferred to coinsurance or the patient, but instead written off. Due to the charge balance being written off, the current balance of any matching charges is zero. 
+* Charges matched to an 835 claim level or denial transaction in a previous “Case” are excluded from this “Case”.
+
+
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL5
+Adjudication of all charges on an invoice except one.
+Case 5 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must relate to a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on any matched charges must be equal to the first date of service or between the first date of service and last date of service included in the 835 claim level transaction set. 
+* The current charge balance of any included charge cannot be equal to zero.
+* Any charge whose current balance equals the difference between the sum of the current balance of all charges on the invoice and the total billed amount on the 835 claim level transaction is excluded. Effectively, this identifies the situation where all of the charges on the invoice with the exception of one charge are being paid.
+* Charges matched to an 835 claim level transaction in a previous “Case” are excluded from this “Case”.
+
+FEX: EPP_CLAIM_LEVEL_PMT_CL6
+
+Transactions not otherwise matched to a charge - there can be only one charge on the invoice.
+Case 6 must meet the following criteria:
+* The invoice number on the 835 claim level transaction must relate to a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The 835 transaction must be a claim level transaction, as indicated by an 835 CLP segment with no associated SVC segment.
+* If the transaction in the 835 file is a claim level transaction, it cannot be a recoup transaction; claim status “22”.
+* The date of service on the charge must be equal to the first date of service or between the first date of service and last date of service included in the 835 claim level transaction set.
+* The current charge balance of any included charge cannot be equal to zero.
+* There must have been only one charge on the original invoice. Assumption: If there is only one charge on the invoice, then any transaction must be for that charge, even if the 835 billed amount does not match either the original price or the current balance of the charge. 
+* Charges matched to an 835 transaction in a previous “Case” are excluded from this “Case”.
+
+FEX: EPP_CLAIM_LEVEL_PMT_BC1
+
+Additional content to be added at a later date.
+
+Section 7.2 - Matching One ERA 835 Transactions to One Charge in CareConnect 
+
+
+
+
+Additional content to be added at a later date.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP1
+
+Invoice, Date of Service, CPT, and Modifiers 1 & 2 in the 835 file match the same values on the charge in Epic – the 835 line item billed amount is equal to the original price of the charge.
+
+Case 1 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the CPT code on the charge transaction.
+* Modifier fields 1 and 2 on the SVC line item transaction must match modifiers one and two on the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the original price of one charge.
+* Charges matched in a previous “Case” are excluded from this “Case”.
+
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP2
+Invoice, Date of Service, CPT, and Modifiers 1 & 2 in the 835 file match the same values on the charge in Epic – the 835 line item billed amount is equal to the claim billed amount on the charge
+
+Case 2 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the CPT code on the charge transaction.
+* Modifier fields 1 and 2 on the SVC line item transaction must match modifiers one and two on the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the claim billed amount of one charge.
+* Charges matched in a previous “Case” are excluded from this “Case”.
+
+
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP3
+Invoice, Date of Service, and CPT in the 835 file match the same values on the charge in Epic - line item billed amount is equal to the original price of the charge. 
+Case 3 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the CPT code on the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the original price of one charge.
+* Charges matched to a previous “Case” are excluded from this “Case”.
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP4
+Invoice, Date of Service, and CPT in the 835 file match the same values on the charge in Epic – the 835 line item billed amount is equal to the claim billed amount on the charge.
+
+Case 4 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the CPT code on the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the claim billed amount of one charge.
+* Charges matched to a previous “Case” are excluded from this “Case”.
+
+
+
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP5
+Invoice, Date of Service, and CPT in the 835 file match the same values on the charge in Epic – the 835 line item billed amount is equal to the original amount of the charge. 
+Case 5 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the CPT code on the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the original amount of one charge.
+* Charges matched to a previous “Case” are excluded from this “Case”.
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_MP6
+Invoice, Date of Service, and alternate CPT match the same values on the charge in Epic – the 835 line item billed amount is equal to the original price of the charge.
+
+Case 6 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction must be equal to the date of service of the charge transaction.
+* The CPT code on the SVC line item transaction must match to the alternate CPT code for the charge transaction.
+* The line item billed amount of the SVC line item transaction is equal to the original price of one charge.
+* Charges matched to a previous “Case” are excluded from this “Case”.
+
+
+
+
+
+Section 7.3 - Matching One ERA 835 Transactions -Special Circumstances
+
+
+
+
+Additional content to be added at a later date.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+FEX: EPP_LS_SVC_LVL_PMT_LS1
+No one charge was matched to a payment or denial transaction in the 835 file in a previous “Case”, instead, 2 or more charges are now being matched to one payment or denial transaction. 
+Case 1 must meet the following criteria:
+* The invoice number on the 835 CLP segment must be a valid invoice; the first character of the invoice number must be ‘P’ and the invoice number must match to an existing charge invoice number in Clarity.
+* The SVC line item transaction cannot be a recoup transaction, as designated by a claim status of “22” on the CLP segment.
+* The date of service of the SVC line item transaction or denial must be equal to the date of service of the matching charges.
+* The CPT code on the SVC line item transaction or denial must be equal to the CPT code on the matching charges.
+* The first modifier on the SVC line item transaction or denial must be equal to the first modifier on each of the matching charges.
+* The sum of the billed amount of the matching charges is equal to the billed amount on the SVC line item transaction or denial. 
+
+FEX: EPP_MATCH_PMTS_TO_CRGS_DIF_INVC_DI1Additional content to be added at a later date
+
+FEX: EPP_2_PMTS_4_1_CRGS_MX1Additional content to be added at a later date
+
+
+
+
+
+
+
+
+
+Section 8 - Post Matching File Revisions
+Once the ERA transactions have been matched to charges in CareConnect, file revisions which require information about the current status of the charge can be made.
+
+Section 8.1 - Change ERA 835 Transactions for Voided to Active Charge
+
+
+
+
+Additional content to be here added at a later date.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+FEX: EPP_MATCH_PMT_TO_ACTIVE_CRG_VC1
+Additional content to be added at a later date.
+
+
+
+
+
+
+FEX: EPP_MATCH_PMT_TO_ACTIVE_CRG_VC2
+Additional content to be added at a later date.
+
+
+Section 8.2 - Other Revisions
+
+
+
+
+Additional content to be here added at a later date.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. Non-technical readers may wish to proceed to the next section.
+
+FEX: EPP_REMOVE_CLOSED_DENIALS
+Issue: The ERA 835 files include denial transactions for closed charges. A closed charge has a $0 balance, has not been transferred and has not been voided and then reentered. These transactions have no value and become exceptions which then require a manual review
+Conditions for Identification of transactions to be removed include:	
+* In the ERA 835 file the claim transaction (CLP segment) must be a denial transaction as identified by a value of ‘4’ in the claim status field.
+* There must be enough accurate information in the ERA 835 file to reliably match the denial transaction to a charge in EPIC.
+* The current balance of the charge in EPIC must be $0.
+* The charge cannot have been voided or transferred, this will be indicated by the void date in the charge having a “null” value. 
+
+For transactions meeting the above criteria the following revisions are made:
+* Claim transactions (CLP segments) matching the required criteria are marked as excluded. 
+
+FEX: EPP_ON_RC16_CPY_REMARK_TO_RSN_CD
+For Reason Code 16 - Add “U” Reason Code for some Remark Codes
+Purpose: When a reason code “16” is present in an ERA 835 txn set, the txn set will also include a number of associated remark codes.  In order to increase the visibility in CareConnect of these remark codes, the remark codes are included in the txn set a 2nd time as a “U” reason code.
+Conditions for Identification of transactions to be revised include:
+* The ERA 835 line item (SVC segment) payment amount must be equal to $0. 
+* There must be a reason code 16 on an adjustment segment (SVC-CAS) associated with the line item (SVC). 
+* There must be a remark segment (LQ) associated with the line item (SVC). This remark segment must have a type code of ‘HE’ and an industry code of ‘M’ or ‘N’. 
+* The remark code value on the remark segment (LQ) cannot be in the list of excluded remark codes. (See Appendix X for the list of excluded remark codes.)
+For transactions meeting the above criteria the following revisions are made:
+* Mark any adjustment (SVC-CAS) segment meeting the defined criteria as excluded. 
+* Insert a replacement adjustment (SVC-CAS) segment into the ERA 835 file. Remark codes not on the excluded list are added to the adjustment (SVC-CAS) segment as a reason code. The reason code being added to the adjustment (SVC-CAS) segment is created by appending the remark code to a “U”. 
+
+
+
+FEX: epp_set_contract_payor_yn
+Determine if the Payor is a Contracted Payor  
+Determine whether or not the payor identified on the ERA 835 transaction is contracted. This is one of the data points used by the group code/reason code adjustment.
+The assumption on load is that all ERA 835 payors are Contracted payors. This program is actually checking to see if they are non-contracted and modifying the load file to ‘N’, otherwise it remains a ‘Y’, indicating contracted.
+Conditions for Identification of transactions to be revised:
+* Clarity transaction Id is not zero or null and has not already been marked for exclusion.
+* The segment is for a payor.
+* Has an invoice in clarity with a detail type value of ‘50’.
+* Clarity has the payor marked as a non-contracted payor with a code value of ‘1’.
+* The payor does not exist in the contracted payor lookup table.
+
+For transactions meeting the above criteria the following revisions are made:
+* Update service segment payor indicator to non-contracted (‘N’).
+
+
+FEX: FEX: EPP_CHK_CLP_4_ACTV_SVC
+Mark ERA 835 claim transactions (CLP) that had included a line item in the original ERA 835 file but no longer have any active line items as excluded
+
+It is possible that the ERA/835 file revisions made by EPP may have resulted in a situation where a claim transaction (CLP) which originally had line items (SVC) no longer has any “active” line items. In this case the claim transaction (CLP) needs to be marked as excluded.
+(This should only be possible for claims transactions with a $0 payment amount. Claim transactions that were received from the payor with no line items are also excluded.)
+Conditions for Identification of transactions to be revised include:
+For transactions meeting the above criteria the following revisions are made:
+
+
+FEX: FEX: EPP_CHK_ST_4_ACTV_CLP
+Mark ERA 835 Transactions Sets (ST segment) which had at least one Claim Transaction in the original ERA 835 File but no longer include any active Claims (CLP) as excluded
+
+It is possible that the ERA/835 file revisions made by EPP may have resulted in a situation where a transaction set (ST) which originally had claim transactions (CLP), but no longer has any “active” claim transactions. In this case the transaction set (ST) needs to be marked as excluded.
+(This should only be possible if claims transactions in the transaction set had a $0 payment amount or were recognized as duplicate payments.)      
+Conditions for Identification of transactions to be revised include:
+For transactions meeting the above criteria the following revisions are made:
+
+
+
+
+
+Section 9 - Modify Group Reason Codes to Achieve Different Actions
+The actions indicated by the group and reason codes the payors have include in their ERA 835 files are not always consistent with the actions UCLA FPG would prefer.  Group and reason codes are modified to values which will create optimal results.  
+
+
+Scenario 00:SVC segment Claim adjustment scenarios for plastic surgery transactions.Scenario 00 must meet the following criteria:
+* Centers for Medicare and Medicaid Services National Provider Identifier code with a value of ‘XX’
+* Must be a payee record identified with a value of ‘PE’ from the 835 file.
+* Has a value of ‘TJ’ representing the Federal Taxpayer's Identification Number.
+* Has a provider identification code of ‘1255396602’ or provider reference id of '061720408' representing plastic surgery providers
+
+Scenario 01:SVC segment Claim adjustment scenario for contracted payors where the group is patient’s responsibility.Scenario 01 must meet the following criteria:
+* 835 claim adjustment line item must be a Contracted Payor.
+* A claim adjustment group code indicating it is the patient’s responsibility (PR).
+* Any claim adjustment reason codes with a value of  ‘1’- Deductible Amount, ’2’- Coinsurance Amount, ’3’ – Co-Payment Amount or ’122’ – Psychiatric reduction
+
+Scenario 03:SVC segment Claim adjustment scenario for contracted payors where the group is patient’s responsibility when payment equals zero.Scenario 03 must meet the following criteria:
+* Claim status must not be a secondary claim.
+* 835 claim adjustment line item must be a Contracted Payor. 
+* The provider line item payment amount is zero.
+* Claim adjustment group code is Contractual Obligations or Other adjustments
+* Or, a claim adjustment group code for the patient’s responsibility (PR) and does not have a claim adjustment reason code with a value of  ‘1’- Deductible Amount, ’2’- Coinsurance Amount, ’3’ – Co-Payment Amount , ’122’ – Psychiatric reduction or no value at all.
+
+Scenario 04:SVC segment Claim adjustment scenario for non-contracted payor for CO-45 or patient’s responsibility.Scenario 04 must meet the following criteria:
+* Claim status must not be a secondary claim.
+* 835 claim adjustment line item must be a Non-contracted Payor.
+* Claim adjustment group code is Contractual Obligations and when any claim adjustment reason code value is‘45’ -charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement. 
+* Or  a claim adjustment group code is the patient’s responsibility (PR) and has any claim adjustment reason code with a value of  ‘1’- Deductible Amount, ’2’- Coinsurance Amount, ’3’ – Co-Payment Amount , or ’122’ – Psychiatric reduction’).
+
+
+Scenario 05:SVC segment Claim adjustment scenario for both non-contracted and contracted payors.Scenario 05 must meet the following criteria:
+* Claim status must not be a secondary claim.
+* 835 claim adjustment line item is a Non-contracted Payor and the claim is the patient’s responsibility and does not have a claim adjustment reason code with a value of  ‘1’- Deductible Amount, ’2’- Coinsurance Amount, ’3’ – Co-Payment Amount , ’122’ – Psychiatric reduction or no value at all.
+* Or  835 claim adjustment line item is a contracted Payor and the provider line item payment amount greater than zero and claim adjustment group code is not the patients responsibility and does not have a claim adjustment reason code with a value of  ‘1’- Deductible Amount, ’2’- Coinsurance Amount, ’3’ – Co-Payment Amount , ’122’ – Psychiatric reduction or no value at all.
+* Or 835 claim adjustment line item is a contracted Payor and the provider line item payment amount greater than zero and claim adjustment group code is not the patient’s responsibility.
+* Or 835 claim adjustment line item is a Non-contracted Payor and the claim is not the patient’s responsibility.
+
+Scenario 06:Adjustment claim scenario for secondary claims.Scenario 05 must meet the following criteria:
+* Claim status is a secondary claim indicated with a claim status value of ‘2’ or ‘3’.
+
+
+
+Section 10 - Creating the Output ERA 835
+
+The revised and modified data in the EPP 835 Database tables must now be recomposed into and ERA 835 file. This requires recognizing what segments are still active; resetting the transaction set record counts and restoring the file to its original sequencing. Sequencing is critical as position in the file designates the relationships of the segments to each other.  
+
+
+Reset the Transaction Set (ST-SE) Record Count 
+Each transaction set in the ERA 835 file begins with an ST segment and ends with an SE segment. Each SE segment includes a count of all the segments in that transaction set.  The ST and the SE segments are also included in the segment count. 
+Because EPP may have removed segments or added segments to each transaction set, EPP must reset the SE segment count to be equal to the number of active segments in each transaction set.  A segment is active if the exclusion reason code of the segment is all blanks and the exclusion reason codes of all parents, grandparents, etc. are also blank.
+This would mean that if an SVC-CAS segment is to be counted the exclusion reason code for that segment must be blank.  The exclusion codes of all of the SVC_CAS segment’s ancestors must also be blank.  This means, for an SVC_CAS segment, the exclusion codes of the SVC, CLP, LX, ST, GS, and ISA segments to which it is related must be blank.  In figure 10.1 below the ancestors of the SVC-CAS segment are highlighted in green.      
+
+Diagram of ERA 835 Segments – Showing Relationships to Each Other
+
+Figure 10.1
+
+
+
+FEX: epp_reset_se_count
+
+Re-Sequencing the ERA 835 Output File
+At the beginning of the EPP process the ERA 835 file is divided into different segment types and each of these types are then loaded into a separate database table. Once the file revisions are completed, the modified data which is still in the DB tables, needs to be reorganized back into a correctly structured and sequenced ERA 835 file.  
+In the original ERA 835 file, the position of each segment in the file established its relationship to other segments.  For example, an SVC segment will contain line item data for the CLP (claim) segment which immediately preceded the SVC segment in the ERA 835 file. When the ERA 835 segments were loaded into database tables, this positional information was translated into relational keys. Each CLP segment was assigned a File Id, an ST sequence number, an LX sequence number and a CLP (claim) sequence number. The SVC segment (child) inherited the key values of the CLP (parent) segment to which it is related. These relational keys can now be used to recreate the positional relationships which were present in the original ERA 835 file.
+There is another type of sequencing in the ERA 835 which is “sequencing by convention”. For example, both the BPR and TRN segments are children of the ST segment. By convention, the BPR segment always appears in the ERA 835 before the TRN segment.  Another example; the payor’s N1, N2 and N3 segments will always appear in the file before the payee’s N1, N2 and N3 segments.
+In Figure 10.2 on next the page; the file id, ST sequence number, LX sequence number, CLP sequence number, SVC sequence number and SVC-CAS sequence number are represented by columns A, B, C, E, F, H and J respectively. These are the relational keys which were used to translate the positional relationships in the original ERA 835 file. Columns D, G and I represent the sort keys which are used to effect the ERA 835 sequencing by convention. The combination of these two sets of sort keys provides enough information to recreate a correctly sequenced version of the revised ERA 835 file.    
+
+
+ABCDEFGHIJISA    0000010000 000000000000000000000000GS     0000010001000000000000000000000000ST     0000010001000100000000000000000000BPR    0000010001000110000000000000000000TRN    0000010001000120000000000000000000DTM(ST)0000010001000130000000000000000000N1(PR) 0000010001000142000001010000000000N3(PR)0000010001000142000001030000000000N4(PR)0000010001000142000001040000000000REF(PR)000001 0001000142000001050000000000PER(PR)000001 0001000142000001060000000000N1(PE)0000010001000142000002010000000000N3(PE)0000010001000142000002030000000000N4(PE)0000010001000142000002040000000000REF(PE)000001 0001000142000002050000000000PER(PE)000001 0001000142000002060000000000LX0000010001000150010000100000000000CLP0000010001000150010001120000000000CAS(CLP)0000010001000150010001150001000000NM1(QC)0000010001000150010001200001000000NM1(IL)0000010001000150010001200002000000NM1(74)0000010001000150010001200003000000NM1(82)0000010001000150010001200004000000NM1(TT)0000010001000150010001200005000000NM1(PR)0000010001000150010001200006000000REF(CLP)0000010001000150010001230001000000DTM(CLP)0000010001000150010001300001000000QTY(CLP)0000010001000150010001390001000000SVC0000010001000150010001400001000000DTM(SVC)0000010001000150010001400001100000CAS(SVC)0000010001000150010001400001200001REF(SVC)0000010001000150010001400001300001AMT(SVC)0000010001000150010001400001350001QTY(SVC)0000010001000150010001400001360001LQ0000010001000150010001400001400001PLB0000010001000160000001000000000000SE0000010001000199000099990099990099GE   0000010001999999000099990099990099IEA0000010099999999009999999999990099Relational and By-Convention Sort Keys
+
+A – File ID
+B – (GS_GRP_ SEQ_NO) Record sequencing indicator for group sequence (GS) header
+C – (ST_TXN_SET_CNTL_NO) Record sequencing indicator for transaction set (ST) header
+D – Record sequencing indicator within transaction sets
+E – (LX_SEQ_NO) Record sequencing indicator for header number
+F – (CLP_CLM_SEQ_NO / PLB_SEQ_NO/PER) Record sequencing indicator for claims
+G – Record sequencing indicator within claims
+H – (SVC_SEQ_NO) Record sequencing indicator for line items
+I – Record sequencing indicator within a service
+J – (SVC_CAS_SEQ_NO) Record sequencing indicator for line item claim adjustments
+
+
+Figure 10.2
+
+
+NOTE: The remainder of this section is primarily intended for technical readers. 
+
+
+
+Additional content to be added here at a later date.
+
+
+
+
+
+
+Appendix A
+835 Payment File CLP Segments and Headers
+
+835 Payment File - CLP Segments and Headers	
+	
+The following diagram displays the segment header names associated with the first twelve header segments in the 835 payment file.		
+	
+
+
+Diagram – 835 File Segment & Headers 1 -12
+
+
+CLP Segment in 835 Payment File	
+
+The following diagram displays the sequence fields pertaining to the CLP Claim Payment Information segment. 	
+The CLP sequence fields in this segment include claim payment information such as the:
+* Invoice number
+* Claim status
+* Total reported charges at the service line level
+* Total payments reported
+* Patient responsibility amount
+* Claim filing indicator code
+* Payer claim control number
+* Facility and frequency type codes
+
+
+Diagram – Claim Payment Information Segment
+
+
+NM1 (Patient Name) Segment in 835 Payment File	
+
+The following diagram displays the sequence fields pertaining to the NM1 Patient Name segment. 
+The NM1 sequence fields in this segment include the following patient name information:
+* Entity codes pertaining to the patient
+* Organization name or patient name details
+* Identification and entity relationship codes – if applicable
+
+
+Diagram – Patient Name Segment
+
+NM1 (Service Provider Name) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the NM1 Service Provider Name segment. 
+The NM1 sequence fields in this segment include the following service provider information:
+* Entity codes pertaining to the service provider
+* Organization name or service provider name details
+* Identification code and code qualifier – if applicable
+
+
+Diagram – Service Provider Name Segment
+
+
+NM1 (Crossover Carrier Name) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the NM1 Crossover Carrier Name segment. 
+The NM1 sequence fields in this segment include the following service provider information:
+* Entity codes pertaining to the carrier
+* Organization name or carrier name details
+* Identification code and code qualifier – if applicable
+
+
+Diagram – Crossover Carrier Name Segment
+
+
+MOA Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the MOA segment. 
+The MOA sequence fields in this segment include codes used to determine when the claim has been crossed over to a secondary payer and are used to determine the assignment for Next Responsible Party actions performed within the claim.
+
+
+Diagram – Outpatient Adjudication Information Segment
+
+
+DTM Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the DTM segment. 
+The DTM sequence fields in this segment include the service line level received or start date, and the specified start date used for payment matching.
+Note: A DTM entry must exist for each SVC segment within a claim.
+
+
+Diagram – Date/Time Reference – Service Line Level Segment
+
+
+SVC Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the SVC segment. 
+The SVC sequence fields in this segment include multiple sub-elements. The first sub-element specifies the procedure code being matched against other revenue codes. The second sub-element indicates the code or revenue code for the claim line. This procedure code is used during the search for a charge line to match against, along with the charge amount and date of service. The third sub-element applies to applicable modifiers. If used, the modifiers must match exactly to the list of modifiers stored for this claim line in the invoice record.
+
+
+Diagram – Service Information Segment
+
+
+CAS Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the CAS segment. 
+The CAS sequence fields in this segment include a group code that is used when the Remittance Options record is set to collect EOB data. In the remittance options record, reason codes may be specified to populate as Deductible or Coinsurance amount fields for the payment. In addition, the association of these codes with other particular codes may be established. The monetary amount specifies the adjustment amount.
+
+
+
+
+Diagram – Claim Adjustment Segment
+LQ Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the LQ segment.
+The LQ sequence fields in this segment are used to identify the code table and to include any additional remarks related to the code.
+See Appendix 1 – HIPPA Remark Codes to see detailed remark codes and descriptions related to the LQ segment.
+
+
+
+
+Diagram – Industry Codes Segment
+
+REF Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the REF segment and specifically related to a Receiver Identification and a Version Identification
+The REF sequence fields in this segment may include a:
+* Reference ID
+* Description
+* Identifier
+
+
+Diagram – Receiver Identification Segment
+
+
+Appendix B
+835 Payment File Transaction Set Headers and Trailers
+
+
+
+835 Payment File – Transaction Set Headers and Trailers
+
+The following diagram displays the transaction set header and trailer names associated with the 835 payment file.
+
+
+Diagram – 835 Payment File Transaction Set Headers and Trailers
+
+
+ST Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the ST Transaction Set Header segment. 
+The ST sequence fields in this segment include a transaction set identifier code (typically ‘835”) and a transaction set control number used to identify the transaction itself. This number is verified against the transaction set control number in the corresponding SE segment.
+
+
+Diagram – Transaction Set Header Segment
+TRN Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the TRN Reassociation Trace Number segment. 
+
+
+
+
+Diagram – Reassociation Trace Number SegmentBPR Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the BPR Financial Information segment. 
+
+
+Diagram – Financial Information Segment
+REF (EV) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the REF Receiver Identification segment. 
+
+
+
+
+Diagram – Receiver Identification Segment
+DTM Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the DTM Production Date segment. 
+
+
+
+
+Diagram – Production Date Segment
+
+
+N1 (PR) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N1 Payer Identification segment. 
+
+
+
+
+Diagram – Payer Identification SegmentN3 (900) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N3 Payer Address segment. 
+
+
+
+
+
+Diagram – Payer Address Segment
+
+
+N4 (Payer) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N4 Payer City, State, Zip Code segment. 
+
+
+
+Diagram – Payer City, State, Zip Code SegmentREF (2U) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the REF Additional Payer Identification segment. 
+
+
+
+
+Diagram – Additional Payer Identification Segment
+
+PER (CX) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the PER Payer’s Claim Office segment. 
+
+
+
+
+Diagram – Payer’s Claim Office Segment
+PER (BL) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the PER Payer Technical Contact Information segment. 
+
+
+
+
+Diagram – Payer Technical Contact Information Segment
+
+N1 (PE) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N1 Payee Identification segment. 
+
+
+
+
+Diagram – Payee Identification SegmentN3 (Payee) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N3 Payee Address segment. 
+
+
+
+
+Diagram – Payee Address Segment
+
+N4 (Payee) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the N4 Payee City, State, Zip Code segment. 
+
+
+
+
+Diagram – Payee City, State, Zip Code SegmentREF (Payee) Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the REF Federal Taxpayer’s Identification Number / Additional Payee Identification Qualifier segment. 
+
+
+
+
+
+Diagram – Federal Taxpayer’s Identification Number / Additional Payee Identification Qualifier Segment
+
+LX Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the LX Header Number segment. 
+
+
+
+
+
+
+Diagram – Header Number SegmentTS3 Segment in 835 Payment File
+
+The following diagram displays the sequence fields pertaining to the TS3 Provider Summary Information segment. 
+
+Diagram – Provider Summary Information Segment
+Appendix C
+Acronyms and Definitions
+
+
+Acronyms & Definitions
+
+
+837 Health Care Claim – Transaction set format established by HIPAA requirements for the electronic submission of healthcare claim information.
+ANSI – American National Standards Institute
+BPR – Financial Information
+CareConnect – UCLA’s claim payment transaction processing system (also referred to as CareConnect)
+CAS – Claim Adjustment;
+Centers for Medicare and Medicaid Services National Provider Identifier code – identifier used to eliminate the need for health care providers to use different identification numbers when conducting business with multiple health plans.
+CLP – Claim Payment Information
+Contracted Payor - Health care provider that is contracted with an insurance company to provide health care services.
+CPT – Current Procedural Terminology
+CUR – Foreign Currency Information
+DISA – Data Interchange Standards Association
+DOS – Date of Service
+DTM – Production Date
+Duplicate Check – Transaction process conducted to identify duplicate transactions in EPP.
+Duplicate Transactions - Transactions received from multiple sources in more than one ERA 835 file.
+EDI – Electronic Data Interchange
+EDI File Loop – A group of transaction data within an EDI X12 file.
+EPIC – UCLA’s claim payment transaction processing system (also referred to as CareConnect)
+EPP – ERA Pre-Processor
+EPP Inbox/Outbox – Input location with folder where all files for EPP processing are stored.
+ERA – Electronic Remittance Advice
+ERA 835 Output File – The 835 file produced by EPP after revisions are completed.
+Federal Taxpayer's Identification Number - an identification number used by the Internal Revenue Service (IRS) in the administration of tax laws. It is issued either by the Social Security Administration (SSA) or by the IRS (typically represented in a claim as “TJ”).
+Field Delimiter – Field separator between each EDI file data element.
+Group Reason Codes – Used to communicate an adjustment, meaning that they must convey why a claim or service line was paid differently than it was billed.
+GS – Functional Group Header
+HCPS – Healthcare Common Procedure Coding System
+HIPAA – Health Insurance Portability and Accountability Act
+ISA – Interchange Control Header
+LQ – Industry Codes
+LX – Header Number
+MOA - Outpatient Adjudication Information
+N1 - Payee Identification
+N1 - Payer Identification
+N3 – Payee Address
+N3 – Payer Address
+N4 – Payee City, State, Zip Code
+N4 – Payer City, State, Zip Code
+NM1 – Patient Information; includes Patient Name, Insured Name, Corrected Patient Information
+t/Insured Name, Service Provider Name,  Crossover Carrier Name, Corrected Priority Payer Name, Other Subscriber Name
+Patient’s Responsibility – Term indicating a billing or payment requirement posted to a direct patient (code “PR”).
+PER – Payer Business Contact Information
+PER – Payer Technical Contact Information
+PER – Payer Web Site
+RDM – Remittance Delivery Method
+REF – Additional Payer Identification
+REF – Receiver Identification
+REF – Version Identification
+Relational and By-Convention Sort Keys - The relational keys which were used to translate the positional relationships in the original ERA 835 file.
+Segment Qualifier – A specific qualifier within a segment that defines the purpose for that segment.
+ST – Transaction Set Header
+SVC – Service Information
+Transaction Set – Section within the ERA 835 file that begins with an ST segment and ends with an SE segment and are used to be included in the segment count.
+TRN – Reassociation Trace Number
+TS2 – Provider Supplemental Summary Information
+TS3 – Provider Summary Information 
+
+pg. 45 	                                                      ERA Pre-Processor – Appendix A, 835 Payment File CLP Segments and Headers
+
+
+
+pg. 93 	                                                      ERA Pre-Processor – Appendix A, 835 Payment File CLP Segments and Headers
+
