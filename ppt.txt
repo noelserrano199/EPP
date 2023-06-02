@@ -1,0 +1,115 @@
+NPR 37805 Payment Posting Automation Using EPIC
+Kick Off MeetingMay 3rd, 2023
+
+Project Team
+ISS UCLA Team
+Director: Scott Sherman
+Noel Serrano – Professional Billing Analyst
+Christopher “Fig” Figueroa – PB Manager
+Jeffrey Robinson – PSS Program Analyst
+Shital Pandya– PSS Manager
+Sam Dunn – Application Trainer
+
+
+
+Operational Leadership
+Project Sponsor: Kristin Kuntz
+Stakeholders:
+Anton Loman – Director of PBO
+Agustin Flores – Assistant Director of PBO
+Kathy Carlin – Project Manager
+
+
+
+Background
+
+Due to the large volume of electronic remittance advice (ERA) files and multiple dialects of the ERA 835 standard, UCLA-FPG faces significant challenges in processing and posting accurate transactions. This results in high labor costs and delays in recording information, which can impact the allocation of payments to FPG departments.
+
+The Professional Billing Electronic Remittance Pre-Processor (EPP) application was created to address these challenges. EPP has the ability to translate different insurers' ERA 835 dialects into the CareConnect dialect, identify and remove duplicate transactions, and resolve common data inconsistencies. By reducing the number of exceptions that require manual intervention, EPP greatly reduces labor costs and improves the efficiency of transaction processing and posting.
+
+EPP performs a range of checks and updates recommended by PBO, such as updating RMC codes, merging payment amounts, and suppressing certain types of denials.
+
+However, documentation for EPP has not been kept up-to-date, and fixing issues requires extensive resources.
+
+Additionally, the current process lacks the desired development and testing environments, leading to new issues when modifications are made to address bugs.
+
+The version of WebFocus used in EPP is outdated and no longer supported by TIBCO. Upgrading to a newer version may cause issues and require significant resources. Testing may not be possible, leading to instability in the future.
+
+
+Scope
+
+With the advancements in Epic, we propose to start transitioning EPP processes into Epic where appropriate and reduce our reliance on EPP for remittance processing.
+To achieve this goal, we will review each payer's remittance processing requirements and provide recommendations on what can be moved into Epic.
+Our approach will include:
+Review the existing EPP logic to determine its continued relevance and feasibility, including assessing the potential for replication within Epic.
+Conducting extensive testing of unaltered remittance files in the PSUP environment to identify automation opportunities, compare data with EPP remittance files, and present workflow decisions to operational leaders for next steps.
+Developing automation within Epic for remittance files.
+Developing documentation for edits within EPP and Epic.
+Developing training documentation and integrating it into the current training strategy.
+Evaluating the frequency of each workflow to determine if it should be included in the larger training strategy.
+Develop and/or maintain current EPP reports.
+
+High Level Deliverables
+Professional Billing (PB) Team: 
+Analysis report detailing the current state of ERA 835 processing and identifying pain points and areas for improvement.
+Recommendations report outlining potential solutions to address identified pain points, including EPP and Epic replication options.
+Testing plan detailing the various test scenarios that will be used to validate the effectiveness of the new ERA 835 processing procedures and systems.
+Final report summarizing the results of the project and detailing the improvements achieved in ERA 835 processing
+Create and/or maintain reports that are currently sent to operations.
+
+Physician Support Services
+Review scripts with PB Analyst and document EPP process
+Retire existing EPP process
+
+Operation/Stakeholders
+Updated procedures and policies outlining new processes for ERA 835 processing
+Review EPP process and determine its continued relevance.
+Make decisions on items that can’t be replicated in Epic
+
+Training
+Training materials: Develop and deliver training materials for the new processes and tools that will be implemented as part of the project.
+
+
+Plan
+
+To ensure that the processing of remittance files remains smooth and to simplify issue resolution, we will adopt a phased approach for the project. This approach involves revising a limited number of RMOs during each phase, which will allow for better control over the implementation process and reduce the risk of disruption to critical operations. This will allow us to send payer files directly to Epic without EPP pre-processing the file.
+
+Each phase will include the following:
+Identify payer files processed by the RMO.
+3 to 4 weeks of data analysis by reviewing scripts and loading files into a support environment to identify EPP revisions for each payer. In tandem reviewing and documenting the EPP code.
+1 week for operations to review and approve decisions related to project
+1-2 week of build and testing/validation per phase.
+1-2 week of workflow walkthrough and approval gathering
+1 week of post-implementation validation and issue resolution.
+
+Once the RMO(s) has been updated, we will review the next phase with operations to identify next steps.
+
+Risks and Challenges
+
+ Data Integrity: Risk of data errors due to manual data entry.
+
+ Resource Availability: Availability of resources to support both Epic and EPP systems.
+
+ User Acceptance: User acceptance of the new system and changes to workflow processes.
+
+ Implementation Delays: Delays in implementation due to unforeseen technical issues or resource constraints.
+
+ Testing and Validation: Risk of insufficient testing and validation leading to errors and downtime.
+
+ Training and Documentation: Adequate training and documentation to ensure successful adoption of the new system.
+
+
+Out of Scope
+Self Pay / Bad Debt files
+Tapestry Medicare Advantage project
+Additional new features or functionalities that were not part of the original scope or requirement.
+
+Assumptions
+Decisions will be made within the allotted time and responsive throughout the project.
+Go-live will be planned after month-end to eliminate issues that could arise.
+
+Constraints
+Go-live support for Epic 2023 upgrade
+Resource constraints due to upcoming holiday outages.
+Tapestry Medicare Advantage project
+
